@@ -1,0 +1,68 @@
+==================
+Predicate capture references and literal arguments
+==================
+((identifier) @name (#eq? @name "value"))
+---
+
+(query
+  (pattern body: (group
+    (pattern body: (node_pattern node: (identifier)) capture: (capture name: (identifier)))
+    (predicate
+      name: (identifier)
+      argument: (capture name: (identifier))
+      argument: (string (string_content))))))
+
+==================
+Directive arguments preserve dotted names and spelling
+==================
+((comment) @text (#set! injection.language "query"))
+---
+
+(query
+  (pattern body: (group
+    (pattern body: (node_pattern node: (identifier)) capture: (capture name: (identifier)))
+    (directive
+      name: (identifier)
+      argument: (identifier)
+      argument: (string (string_content))))))
+
+==================
+Custom calls are accepted without validating argument semantics
+==================
+(#custom? @undefined 42 -1 0.5 _ MISSING) (#set!)
+---
+
+(query
+  (predicate
+    name: (identifier)
+    argument: (capture name: (identifier))
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier)
+    argument: (identifier))
+  (directive name: (identifier)))
+
+==================
+Predicate inside a node pattern stays in source position
+==================
+(node (#check? key) child: (_) (#act! @undefined))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (predicate name: (identifier) argument: (identifier))
+    (field_constraint name: (identifier) pattern: (pattern body: (node_pattern node: (wildcard))))
+    (directive name: (identifier) argument: (capture name: (identifier))))))
+
+==================
+Alternation owns its alternants and calls in source order
+==================
+[(comment) (#custom? @free)]
+---
+
+(query
+  (pattern body: (alternation
+    (pattern body: (node_pattern node: (identifier)))
+    (predicate name: (identifier) argument: (capture name: (identifier))))))

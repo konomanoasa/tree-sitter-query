@@ -1,0 +1,356 @@
+==================
+Field and negated field preserve their owners
+==================
+(assignment left: (identifier) @target !type)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern
+        body: (node_pattern node: (identifier))
+        capture: (capture name: (identifier))))
+    (negated_field name: (identifier)))))
+
+==================
+Supertype with named and anonymous subtype
+==================
+(expression/call) (expression/"()")
+---
+
+(query
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (identifier))))
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (string (string_content))))))
+
+==================
+ERROR and MISSING are query targets, not recovery artifacts
+==================
+(ERROR) (MISSING) (MISSING identifier) (MISSING ";")
+---
+
+(query
+  (pattern body: (node_pattern node: (identifier)))
+  (pattern body: (node_pattern node: (missing_node)))
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (string (string_content))))))
+
+==================
+Sibling group owns its anchor and postfix operators
+==================
+((comment)+ @doc . (function)?) @pair
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)
+        capture: (capture name: (identifier)))
+      (anchor)
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)))
+    capture: (capture name: (identifier))))
+
+==================
+Bare underscore splits a field prefix but preserves negated field and supertype names
+==================
+(node _field: (_) !_) (_/node) (MISSING _/"token")
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (pattern body: (wildcard))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))
+    (negated_field name: (identifier))))
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (supertype
+    supertype: (identifier) subtype: (string (string_content)))))))
+
+==================
+Adjacent bare wildcards keep separate patterns while names retain leading underscores
+==================
+__ @second _field: (_x !_field) @_x (#_call? _arg @_x)
+---
+
+(query
+  (pattern body: (wildcard))
+  (pattern body: (wildcard) capture: (capture name: (identifier)))
+  (pattern body: (wildcard))
+  (field_constraint
+    name: (identifier)
+    pattern: (pattern
+      body: (node_pattern node: (identifier)
+        (negated_field name: (identifier)))
+      capture: (capture name: (identifier))))
+  (predicate
+    name: (identifier)
+    argument: (identifier)
+    argument: (capture name: (identifier))))
+
+==================
+Typed missing nodes leave subsequent field names in their constraints
+==================
+(MISSING node field: (_)) (MISSING _ MISSING: (_)) (MISSING node ; field follows
+  name ; separator follows
+  : (_))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (comment)
+    (field_constraint
+      name: (identifier)
+      (comment)
+      pattern: (pattern body: (node_pattern node: (wildcard)))))))
+
+==================
+Missing node types and subsequent child patterns retain distinct owners
+==================
+(MISSING _) (MISSING MISSING) (MISSING "token" "child") (MISSING _ field: (_))
+---
+
+(query
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (string (string_content)))
+    (pattern body: (string (string_content)))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard)))))))
+
+==================
+Alternant quantifiers differ from the alternation quantifier
+==================
+[(comment)+ (identifier) @name]* @all
+---
+
+(query
+  (pattern
+    body: (alternation
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier))
+      (pattern
+        body: (node_pattern node: (identifier))
+        capture: (capture name: (identifier))))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))))
+
+==================
+Leading, sibling and trailing anchors belong to the parent pattern
+==================
+(array . (_) @first . (_) @last .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (pattern body: (node_pattern node: (wildcard)) capture: (capture name: (identifier)))
+    (anchor)
+    (pattern body: (node_pattern node: (wildcard)) capture: (capture name: (identifier)))
+    (anchor))))
+
+==================
+Postfix quantifier and captures retain source order
+==================
+(_)+ @a @b
+---
+
+(query
+  (pattern
+    body: (node_pattern node: (wildcard))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))
+    capture: (capture name: (identifier))))
+
+==================
+Node anchors constrain child patterns across calls and negated fields
+==================
+(node (#before?) !a . (#first?) child: (_) (#mid!) !b . (other) . (#last?))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (predicate name: (identifier))
+    (negated_field name: (identifier))
+    (anchor)
+    (predicate name: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))
+    (directive name: (identifier))
+    (negated_field name: (identifier))
+    (anchor)
+    (pattern body: (node_pattern node: (identifier)))
+    (anchor)
+    (predicate name: (identifier)))))
+
+==================
+Top-level field chains retain their target and postfix operators
+==================
+left: right: (node)+ @x
+---
+
+(query
+  (field_constraint
+    name: (identifier)
+    pattern: (field_constraint
+      name: (identifier)
+      pattern: (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)
+        capture: (capture name: (identifier))))))
+
+==================
+Node field chains retain both constraints
+==================
+(node left: right: (_))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (field_constraint
+      name: (identifier)
+      pattern: (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (wildcard))))))))
+
+==================
+Groups and alternations own field constraints in source order
+==================
+((first) next: (second)) [left: (node) right: _]
+---
+
+(query
+  (pattern body: (group
+    (pattern body: (node_pattern node: (identifier)))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (identifier))))))
+  (pattern body: (alternation
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (identifier))))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (wildcard))))))
+
+==================
+Node and group anchors retain call ownership without child patterns
+==================
+(node . (#custom?)) ((#custom?) . (#custom!))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (predicate name: (identifier))))
+  (pattern body: (group
+    (predicate name: (identifier))
+    (anchor)
+    (directive name: (identifier)))))
+
+==================
+Calls separate anchors without merging their source positions
+==================
+(node . (#first?) . (child) . (#last?) .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (predicate name: (identifier))
+    (anchor)
+    (pattern body: (node_pattern node: (identifier)))
+    (anchor)
+    (predicate name: (identifier))
+    (anchor))))
+
+==================
+Group anchors constrain siblings across calls without moving the calls
+==================
+((#before?) (left) (#between?) . (#after!) (right) (#last?))
+---
+
+(query
+  (pattern body: (group
+    (predicate name: (identifier))
+    (pattern body: (node_pattern node: (identifier)))
+    (predicate name: (identifier))
+    (anchor)
+    (directive name: (identifier))
+    (pattern body: (node_pattern node: (identifier)))
+    (predicate name: (identifier)))))
+
+==================
+Call-only containers retain their public structure and postfix ownership
+==================
+[(#check?)]? @a ((#check!) . field: ((#other?)))+ @b
+---
+
+(query
+  (pattern
+    body: (alternation
+      (predicate name: (identifier)))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier)))
+  (pattern
+    body: (group
+      (directive name: (identifier))
+      (anchor)
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (group
+          (predicate name: (identifier))))))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))))
+
+==================
+Nested child patterns allow a trailing anchor across call-only containers
+==================
+(node [(#check?) field: ((child)?)] ((#other!)) .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (pattern body: (alternation
+      (predicate name: (identifier))
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (group
+          (pattern
+            body: (node_pattern node: (identifier))
+            quantifier: (quantifier)))))))
+    (pattern body: (group
+      (directive name: (identifier))))
+    (anchor))))

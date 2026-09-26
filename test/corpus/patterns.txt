@@ -1,0 +1,74 @@
+==================
+Named node with captured child and anonymous child
+==================
+(parent (child) @value "=")
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (pattern
+        body: (node_pattern node: (identifier))
+        capture: (capture name: (identifier)))
+      (pattern body: (string (string_content))))))
+
+==================
+Named and unrestricted wildcards
+==================
+(_) _
+---
+
+(query
+  (pattern body: (node_pattern node: (wildcard)))
+  (pattern body: (wildcard)))
+
+==================
+Group calls may precede a bare wildcard sibling
+==================
+((#custom?) _ @any)
+---
+
+(query
+  (pattern body: (group
+    (predicate name: (identifier))
+    (pattern body: (wildcard) capture: (capture name: (identifier))))))
+
+==================
+Multiple dotted captures belong to the preceding pattern
+==================
+(identifier) @variable.builtin @_local
+---
+
+(query
+  (pattern
+    body: (node_pattern node: (identifier))
+    capture: (capture name: (identifier))
+    capture: (capture name: (identifier))))
+
+==================
+Strings preserve escaped quotes, spaces and literal query symbols
+==================
+"a\"b" " @#;(). "
+---
+
+(query
+  (pattern body: (string (string_content) (escape_sequence) (string_content)))
+  (pattern body: (string (string_content))))
+
+==================
+Comments between nested patterns
+==================
+; document
+(root
+  ; child
+  (item))
+---
+
+(query
+  (comment)
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (comment)
+      (pattern body: (node_pattern node: (identifier))))))
