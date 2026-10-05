@@ -110,7 +110,7 @@ function parse(source, edits = []) {
       /^[0-9]+:[0-9]+ +- +([0-9]+):([0-9]+) +(•?)(query|ERROR)( |\n|$)/.exec(
         cst,
       );
-    assert.notEqual(rootRange, null, cst);
+    assert.ok(rootRange, cst);
     let row = 0;
     for (const byte of bytes) if (byte === 10) row += 1;
     assert.deepEqual(
