@@ -269,6 +269,19 @@ fn string_leaves_preserve_literal_bytes_and_escape_spelling() {
       ],
     ),
     (
+      "\";x\0\"",
+      vec![("\"", 0..1), ("string_content", 1..4), ("\"", 4..5)],
+    ),
+    (
+      "\"\\\n;x\0\"",
+      vec![
+        ("\"", 0..1),
+        ("escape_sequence", 1..3),
+        ("string_content", 3..6),
+        ("\"", 6..7),
+      ],
+    ),
+    (
       "\"a\0b\0\0c\"",
       vec![("\"", 0..1), ("string_content", 1..7), ("\"", 7..8)],
     ),
@@ -315,6 +328,28 @@ fn string_leaves_preserve_literal_bytes_and_escape_spelling() {
       parser.parse(source, None).unwrap().root_node().has_error(),
       "{source:?}"
     );
+  }
+}
+
+#[test]
+fn string_newlines_cannot_skip_comments_before_nul() {
+  let language = grammar::LANGUAGE.into();
+  let mut parser = parser();
+  for (source, api_error) in [
+    ("\"\n;x\0\"", QueryErrorKind::Syntax),
+    ("(#custom? \"\n;x\0\")", QueryErrorKind::Syntax),
+    ("(#custom! \"\n;x\0\")", QueryErrorKind::Syntax),
+    // The API validates the supertype before reading its quoted subtype.
+    ("(identifier/\"\n;x\0\")", QueryErrorKind::Structure),
+  ] {
+    assert_eq!(
+      Query::new(&language, source).unwrap_err().kind,
+      api_error,
+      "{source:?}"
+    );
+    let tree = parser.parse(source, None).unwrap();
+    assert!(tree.root_node().has_error(), "{source:?}");
+    assert_eq!(tree.root_node().byte_range(), 0..source.len());
   }
 }
 

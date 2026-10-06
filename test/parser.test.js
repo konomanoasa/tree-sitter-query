@@ -5,12 +5,33 @@ import { test } from "node:test";
 import { root } from "../scripts/tree-sitter.js";
 import { parse } from "./support/parser.js";
 
+test("query: alternation metadata requires at least one member", () => {
+  const nodeTypes = JSON.parse(
+    readFileSync(join(root, "src", "node-types.json"), "utf8"),
+  );
+  const alternation = nodeTypes.find((node) => node.type === "alternation");
+  assert.deepEqual(alternation.children, {
+    multiple: true,
+    required: true,
+    types: [
+      { type: "directive", named: true },
+      { type: "field_constraint", named: true },
+      { type: "pattern", named: true },
+      { type: "predicate", named: true },
+    ],
+  });
+});
+
 const invalidCases = [
   ["unclosed node", "(node"],
   ["unclosed string", '"unterminated'],
   ["space after capture prefix", "(node) @ name"],
   ["comment after capture prefix", "(node) @; comment\nname"],
   ["newline in string", '"line\nbreak"'],
+  ["comment and NUL after a string newline", '"\n;x\0"'],
+  ["comment and NUL after a predicate string newline", '(#custom? "\n;x\0")'],
+  ["comment and NUL after a directive string newline", '(#custom! "\n;x\0")'],
+  ["comment and NUL after a subtype string newline", '(node/"\n;x\0")'],
   ["empty group", "()"],
   ["bare wildcard opening a group", "(_ @x)"],
   ["quantified bare wildcard opening a group", "(_+ _)"],
@@ -45,11 +66,14 @@ const invalidCases = [
   ["trailing alternation anchor", "[(node) .]"],
   ["consecutive anchors", "(node (_) . . (_))"],
   ["call without marker", "(#name)"],
+  ["dot-prefixed predicate", "(.name? @x)"],
+  ["dot-prefixed directive", "(.name! key value)"],
   ["space after call prefix", "(# name?)"],
   ["space before call marker", "(#name ?)"],
   ["capture on predicate", "(#name?) @capture"],
   ["quantifier on directive", "(#name!)?"],
   ["call as a field target", "(node field: (#check?))"],
+  ["call as a top-level field target", "field: (#check?)"],
   ["missing capture name", "(node) @"],
   ["missing negated field", "(node !)"],
   ["missing field pattern", "(node field:)"],
@@ -75,6 +99,13 @@ for (const [name, source] of invalidCases) {
   });
 }
 
+test("query: completes recovery for long sequences of invalid trailing anchors", () => {
+  for (const unit of ["(node .)\n", "((a) .)\n", "(a/b .)\n", "(node [.])\n"]) {
+    const result = parse(unit.repeat(6000));
+    assert.equal(result.hasError, true, unit);
+  }
+});
+
 const consumerCases = [
   ["unknown nodes and fields", "(unknown field: (other) !absent)"],
   ["unresolved supertype", "(unknown/subtype)"],
@@ -85,6 +116,8 @@ const consumerCases = [
   ["unknown missing node type", "(MISSING unknown)"],
   ["unknown missing node supertype", "(MISSING unknown/subtype)"],
   ["chained field constraints", "(node first: second: (child))"],
+  ["a call-only group in a top-level field", "field: ((#p?))"],
+  ["calls in a quantified top-level alternation", "[(#p?) (a)]+"],
 ];
 
 for (const [name, source] of consumerCases) {

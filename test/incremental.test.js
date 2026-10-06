@@ -20,6 +20,41 @@ function compare(initial, edits, source, valid) {
 
 const cases = [
   {
+    name: "newline before comment-like string content and NUL",
+    initial: '";x\0"',
+    edit: { byte: 1, deleteBytes: 0, insert: "\n" },
+    expected: '"\n;x\0"',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like predicate argument and NUL",
+    initial: '(#custom? ";x\0")',
+    edit: { byte: 11, deleteBytes: 0, insert: "\n" },
+    expected: '(#custom? "\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like directive argument and NUL",
+    initial: '(#custom! ";x\0")',
+    edit: { byte: 11, deleteBytes: 0, insert: "\n" },
+    expected: '(#custom! "\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like subtype and NUL",
+    initial: '(node/";x\0")',
+    edit: { byte: 7, deleteBytes: 0, insert: "\n" },
+    expected: '(node/"\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "escape before a string newline and comment-like content",
+    initial: '"\\\n;x\0"',
+    edit: { byte: 1, deleteBytes: 1, insert: "" },
+    expected: '"\n;x\0"',
+    valid: false,
+  },
+  {
     name: "node delimiter",
     initial: "(node)",
     edit: {

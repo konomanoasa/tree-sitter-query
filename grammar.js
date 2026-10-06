@@ -52,10 +52,11 @@ export default grammar({
   name: "query",
   extras: ($) => [/[ \t\r\n\v\f]/, $.comment],
   rules: {
-    query: ($) => repeat($._member),
+    query: ($) => optional($._members),
+    _members: ($) => seq($._member, optional($._members)),
     _member: ($) => choice($._child_pattern, $._call),
-    _call_only_member: ($) => choice($._call_only_child_pattern, $._call),
     _call: ($) => choice($.predicate, $.directive),
+    _call_only_member: ($) => choice($._call_only_child_pattern, $._call),
     pattern: ($) => postfixed($, choice($._delimited, $.string, $.wildcard)),
     _call_only_pattern: ($) =>
       postfixed(
@@ -174,8 +175,10 @@ export default grammar({
     _string_tail: ($) =>
       seq(
         repeat(choice($.string_content, $.escape_sequence)),
-        token.immediate('"'),
+        choice(token.immediate('"'), seq($._string_line_break, $._unmatchable)),
       ),
+    _string_line_break: () => token.immediate(/\n/),
+    _unmatchable: () => token(seq("\\", /[^\s\S]/)),
     // Content outranks the comment extra so that ; stays inside the string.
     string_content: () =>
       token.immediate(
