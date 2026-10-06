@@ -24,7 +24,6 @@ after(() => {
   runner?.close();
 });
 
-// --time separates per-file CSTs; exclude its timings from comparisons.
 function trees(stdout, path) {
   const parsed = [];
   let lines = [];
@@ -69,8 +68,7 @@ function applyEdits(source, edits) {
   return bytes;
 }
 
-// The CLI exit status misses hidden missing tokens; use the root --cst marker.
-// Repeat unchanged inputs on one parser to check determinism, including recovery.
+// The CLI exit status misses hidden missing tokens; use the --cst marker.
 function parse(source, edits = []) {
   const directory = mkdtempSync(join(runner.directory, "input-"));
   try {

@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyEdits, parse } from "./support/parser.js";
 
-// Recovery shapes are outside the contract, so an invalid source only has to
-// parse; parse() still checks that each tree covers the edited source.
 function compare(initial, edits, source, valid) {
   const description = JSON.stringify({ initial, edits, source });
   const fresh = parse(source);

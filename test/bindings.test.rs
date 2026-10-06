@@ -339,7 +339,6 @@ fn string_newlines_cannot_skip_comments_before_nul() {
     ("\"\n;x\0\"", QueryErrorKind::Syntax),
     ("(#custom? \"\n;x\0\")", QueryErrorKind::Syntax),
     ("(#custom! \"\n;x\0\")", QueryErrorKind::Syntax),
-    // The API validates the supertype before reading its quoted subtype.
     ("(identifier/\"\n;x\0\")", QueryErrorKind::Structure),
   ] {
     assert_eq!(

@@ -1,4 +1,4 @@
-const name = /[A-Za-z0-9_-][A-Za-z0-9_.-]*/;
+const namePattern = /[A-Za-z0-9_-][A-Za-z0-9_.-]*/;
 const stringContent = /[^"\\\n]+/;
 
 const postfixed = ($, body) =>
@@ -24,10 +24,9 @@ const fieldConstraint = ($, target) =>
     field("pattern", target),
   );
 
-// The Query API accepts no layout or comment around the subtype separator.
-const subtyped = ($, name) =>
+const subtyped = ($, supertype) =>
   seq(
-    field("supertype", name),
+    field("supertype", supertype),
     token.immediate("/"),
     field(
       "subtype",
@@ -57,6 +56,7 @@ export default grammar({
     _member: ($) => choice($._child_pattern, $._call),
     _call: ($) => choice($.predicate, $.directive),
     _call_only_member: ($) => choice($._call_only_child_pattern, $._call),
+
     pattern: ($) => postfixed($, choice($._delimited, $.string, $.wildcard)),
     _call_only_pattern: ($) =>
       postfixed(
@@ -66,9 +66,16 @@ export default grammar({
           alias($._call_only_alternation, $.alternation),
         ),
       ),
-    // "(_" always opens a node pattern, so a group never starts with a bare wildcard.
-    _group_pattern: ($) => postfixed($, choice($._delimited, $.string)),
     _delimited: ($) => choice($.node_pattern, $.group, $.alternation),
+    _child_pattern: ($) =>
+      choice($._matching_child_pattern, $._call_only_child_pattern),
+    _matching_child_pattern: ($) => choice($.pattern, $.field_constraint),
+    _call_only_child_pattern: ($) =>
+      choice(
+        alias($._call_only_pattern, $.pattern),
+        alias($._call_only_field_constraint, $.field_constraint),
+      ),
+
     node_pattern: ($) =>
       seq(
         "(",
@@ -96,20 +103,14 @@ export default grammar({
         ),
         ")",
       ),
-    _child_pattern: ($) =>
-      choice($._matching_child_pattern, $._call_only_child_pattern),
-    _matching_child_pattern: ($) => choice($.pattern, $.field_constraint),
-    _call_only_child_pattern: ($) =>
-      choice(
-        alias($._call_only_pattern, $.pattern),
-        alias($._call_only_field_constraint, $.field_constraint),
-      ),
     _node_annotation: ($) =>
       choice(anchored($, $._call_only_member), $.negated_field),
+
     field_constraint: ($) => fieldConstraint($, $._matching_child_pattern),
     _call_only_field_constraint: ($) =>
       fieldConstraint($, $._call_only_child_pattern),
     negated_field: ($) => seq("!", field("name", $._name)),
+
     supertype: ($) =>
       subtyped($, choice($.identifier, alias($.wildcard, $.identifier))),
     _untyped_missing_node: () => "MISSING",
@@ -122,6 +123,7 @@ export default grammar({
         ),
       ),
     _missing_supertype: ($) => subtyped($, $._name),
+
     group: ($) =>
       seq(
         "(",
@@ -136,6 +138,7 @@ export default grammar({
         repeat(anchored($, $._member)),
         ")",
       ),
+    _group_pattern: ($) => postfixed($, choice($._delimited, $.string)),
     _call_only_group: ($) =>
       seq(
         "(",
@@ -145,6 +148,7 @@ export default grammar({
       ),
     _call_only_group_start: ($) =>
       choice($._call, alias($._call_only_pattern, $.pattern)),
+
     alternation: ($) =>
       seq(
         "[",
@@ -154,22 +158,26 @@ export default grammar({
         "]",
       ),
     _call_only_alternation: ($) => seq("[", repeat1($._call_only_member), "]"),
+
     quantifier: () => token(choice("+", "*", "?")),
     anchor: () => ".",
+    wildcard: () => "_",
     capture: ($) =>
       seq("@", field("name", alias($._immediate_identifier, $.identifier))),
+
     predicate: ($) => call($, "?"),
     directive: ($) => call($, "!"),
-    identifier: () => name,
+
+    identifier: () => namePattern,
     _field_identifier: () => /[A-Za-z0-9-][A-Za-z0-9_.-]*/,
-    _immediate_identifier: () => token.immediate(name),
+    _immediate_identifier: () => token.immediate(namePattern),
     _name: ($) =>
       choice(
         $.identifier,
         alias($.wildcard, $.identifier),
         alias("MISSING", $.identifier),
       ),
-    wildcard: () => "_",
+
     string: ($) => seq('"', $._string_tail),
     _immediate_string: ($) => seq(token.immediate('"'), $._string_tail),
     _string_tail: ($) =>
@@ -179,7 +187,6 @@ export default grammar({
       ),
     _string_line_break: () => token.immediate(/\n/),
     _unmatchable: () => token(seq("\\", /[^\s\S]/)),
-    // Content outranks the comment extra so that ; stays inside the string.
     string_content: () =>
       token.immediate(
         prec(
@@ -187,8 +194,9 @@ export default grammar({
           repeat1(choice(stringContent, seq("\0", optional(stringContent)))),
         ),
       ),
-    // Distinct NUL transitions prevent the generated lexer from treating it as EOF.
+    // Keep NUL distinct from EOF in the generated lexer.
     escape_sequence: () => token.immediate(choice(/\\(.|\n)/, prec(1, "\\\0"))),
+
     comment: () => /;[^\r\n]*(\r+[^\r\n]+)*/,
   },
 });
