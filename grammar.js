@@ -1,5 +1,5 @@
 const namePattern = /[A-Za-z0-9_-][A-Za-z0-9_.-]*/;
-const stringContent = /[^"\\\n]+/;
+const fieldNamePattern = /[A-Za-z0-9-][A-Za-z0-9_.-]*/;
 
 const postfixed = ($, body) =>
   seq(
@@ -37,6 +37,9 @@ const subtyped = ($, supertype) =>
     ),
   );
 
+const callOnlyGroupMembers = ($) =>
+  seq($._call_only_group_start, repeat(anchored($, $._call_only_member)));
+
 const call = ($, marker) =>
   seq(
     "(",
@@ -53,7 +56,7 @@ export default grammar({
   rules: {
     query: ($) => optional($._members),
     _members: ($) => seq($._member, optional($._members)),
-    _member: ($) => choice($._child_pattern, $._call),
+    _member: ($) => choice($._matching_child_pattern, $._call_only_member),
     _call: ($) => choice($.predicate, $.directive),
     _call_only_member: ($) => choice($._call_only_child_pattern, $._call),
 
@@ -67,8 +70,6 @@ export default grammar({
         ),
       ),
     _delimited: ($) => choice($.node_pattern, $.group, $.alternation),
-    _child_pattern: ($) =>
-      choice($._matching_child_pattern, $._call_only_child_pattern),
     _matching_child_pattern: ($) => choice($.pattern, $.field_constraint),
     _call_only_child_pattern: ($) =>
       choice(
@@ -86,13 +87,13 @@ export default grammar({
               "node",
               choice($.identifier, $.wildcard, $.supertype, $.missing_node),
             ),
-            repeat($._node_annotation),
+            repeat($._non_matching_child),
             optional(
               seq(
                 anchored($, $._matching_child_pattern),
                 repeat(
                   choice(
-                    $._node_annotation,
+                    $._non_matching_child,
                     anchored($, $._matching_child_pattern),
                   ),
                 ),
@@ -103,7 +104,7 @@ export default grammar({
         ),
         ")",
       ),
-    _node_annotation: ($) =>
+    _non_matching_child: ($) =>
       choice(anchored($, $._call_only_member), $.negated_field),
 
     field_constraint: ($) => fieldConstraint($, $._matching_child_pattern),
@@ -128,24 +129,14 @@ export default grammar({
       seq(
         "(",
         choice(
-          alias($._group_pattern, $.pattern),
-          seq(
-            $._call_only_group_start,
-            repeat(anchored($, $._call_only_member)),
-            anchored($, $._matching_child_pattern),
-          ),
+          alias($._group_start_pattern, $.pattern),
+          seq(callOnlyGroupMembers($), anchored($, $._matching_child_pattern)),
         ),
         repeat(anchored($, $._member)),
         ")",
       ),
-    _group_pattern: ($) => postfixed($, choice($._delimited, $.string)),
-    _call_only_group: ($) =>
-      seq(
-        "(",
-        $._call_only_group_start,
-        repeat(anchored($, $._call_only_member)),
-        ")",
-      ),
+    _group_start_pattern: ($) => postfixed($, choice($._delimited, $.string)),
+    _call_only_group: ($) => seq("(", callOnlyGroupMembers($), ")"),
     _call_only_group_start: ($) =>
       choice($._call, alias($._call_only_pattern, $.pattern)),
 
@@ -169,7 +160,7 @@ export default grammar({
     directive: ($) => call($, "!"),
 
     identifier: () => namePattern,
-    _field_identifier: () => /[A-Za-z0-9-][A-Za-z0-9_.-]*/,
+    _field_identifier: () => fieldNamePattern,
     _immediate_identifier: () => token.immediate(namePattern),
     _name: ($) =>
       choice(
@@ -187,15 +178,11 @@ export default grammar({
       ),
     _string_line_break: () => token.immediate(/\n/),
     _unmatchable: () => token(seq("\\", /[^\s\S]/)),
-    string_content: () =>
-      token.immediate(
-        prec(
-          1,
-          repeat1(choice(stringContent, seq("\0", optional(stringContent)))),
-        ),
-      ),
     // Keep NUL distinct from EOF in the generated lexer.
-    escape_sequence: () => token.immediate(choice(/\\(.|\n)/, prec(1, "\\\0"))),
+    string_content: () =>
+      token.immediate(prec(1, repeat1(choice(/[^"\\\n]+/, "\0")))),
+    escape_sequence: () =>
+      token.immediate(seq("\\", choice(/.|\n/, prec(1, "\0")))),
 
     comment: () => /;[^\r\n]*(\r+[^\r\n]+)*/,
   },

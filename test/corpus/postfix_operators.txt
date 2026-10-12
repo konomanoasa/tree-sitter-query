@@ -1,0 +1,64 @@
+==================
+Alternant quantifiers differ from the alternation quantifier
+==================
+[(comment)+ (identifier) @name]* @all
+---
+
+(query
+  (pattern
+    body: (alternation
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier))
+      (pattern
+        body: (node_pattern node: (identifier))
+        capture: (capture name: (identifier))))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))))
+
+==================
+Postfix quantifier and captures retain source order
+==================
+(_)+ @a @b
+---
+
+(query
+  (pattern
+    body: (node_pattern node: (wildcard))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))
+    capture: (capture name: (identifier))))
+
+==================
+Multiple dotted captures belong to the preceding pattern
+==================
+(identifier) @variable.builtin @_local
+---
+
+(query
+  (pattern
+    body: (node_pattern node: (identifier))
+    capture: (capture name: (identifier))
+    capture: (capture name: (identifier))))
+
+==================
+Reject space after capture prefix
+:error
+==================
+(node) @ name
+---
+
+==================
+Reject comment after capture prefix
+:error
+==================
+(node) @; comment
+name
+---
+
+==================
+Reject missing capture name
+:error
+==================
+(node) @
+---

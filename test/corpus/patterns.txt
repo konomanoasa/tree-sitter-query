@@ -1,4 +1,27 @@
 ==================
+Call-only containers retain their public structure and postfix ownership
+==================
+[(#check?)]? @a ((#check!) . field: ((#other?)))+ @b
+---
+
+(query
+  (pattern
+    body: (alternation
+      (predicate name: (identifier)))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier)))
+  (pattern
+    body: (group
+      (directive name: (identifier))
+      (anchor)
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (group
+          (predicate name: (identifier))))))
+    quantifier: (quantifier)
+    capture: (capture name: (identifier))))
+
+==================
 Named node with captured child and anonymous child
 ==================
 (parent (child) @value "=")
@@ -14,16 +37,6 @@ Named node with captured child and anonymous child
       (pattern body: (string (string_content))))))
 
 ==================
-Named and unrestricted wildcards
-==================
-(_) _
----
-
-(query
-  (pattern body: (node_pattern node: (wildcard)))
-  (pattern body: (wildcard)))
-
-==================
 Group calls may precede a bare wildcard sibling
 ==================
 ((#custom?) _ @any)
@@ -35,40 +48,35 @@ Group calls may precede a bare wildcard sibling
     (pattern body: (wildcard) capture: (capture name: (identifier))))))
 
 ==================
-Multiple dotted captures belong to the preceding pattern
+Reject unclosed node
+:error
 ==================
-(identifier) @variable.builtin @_local
+(node
+---
+
+==================
+Reject empty group
+:error
+==================
+()
+---
+
+==================
+Reject empty alternation
+:error
+==================
+[]
+---
+
+==================
+Accept calls in a quantified top-level alternation without semantic validation
+==================
+[(#p?) (a)]+
 ---
 
 (query
   (pattern
-    body: (node_pattern node: (identifier))
-    capture: (capture name: (identifier))
-    capture: (capture name: (identifier))))
-
-==================
-Strings preserve escaped quotes, spaces and literal query symbols
-==================
-"a\"b" " @#;(). "
----
-
-(query
-  (pattern body: (string (string_content) (escape_sequence) (string_content)))
-  (pattern body: (string (string_content))))
-
-==================
-Comments between nested patterns
-==================
-; document
-(root
-  ; child
-  (item))
----
-
-(query
-  (comment)
-  (pattern
-    body: (node_pattern
-      node: (identifier)
-      (comment)
-      (pattern body: (node_pattern node: (identifier))))))
+    body: (alternation
+      (predicate name: (identifier))
+      (pattern body: (node_pattern node: (identifier))))
+    quantifier: (quantifier)))

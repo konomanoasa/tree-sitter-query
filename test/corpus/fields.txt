@@ -1,0 +1,195 @@
+==================
+Field and negated field preserve their owners
+==================
+(assignment left: (identifier) @target !type)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern
+        body: (node_pattern node: (identifier))
+        capture: (capture name: (identifier))))
+    (negated_field name: (identifier)))))
+
+==================
+Top-level field chains retain their target and postfix operators
+==================
+left: right: (node)+ @x
+---
+
+(query
+  (field_constraint
+    name: (identifier)
+    pattern: (field_constraint
+      name: (identifier)
+      pattern: (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)
+        capture: (capture name: (identifier))))))
+
+==================
+Node field chains retain both constraints
+==================
+(node left: right: (_))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (field_constraint
+      name: (identifier)
+      pattern: (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (wildcard))))))))
+
+==================
+Groups and alternations own field constraints in source order
+==================
+((first) next: (second)) [left: (node) right: _]
+---
+
+(query
+  (pattern body: (group
+    (pattern body: (node_pattern node: (identifier)))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (identifier))))))
+  (pattern body: (alternation
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (identifier))))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (wildcard))))))
+
+==================
+Reject call as a field target
+:error
+==================
+(node field: (#check?))
+---
+
+==================
+Reject call as a top-level field target
+:error
+==================
+field: (#check?)
+---
+
+==================
+Reject missing negated field
+:error
+==================
+(node !)
+---
+
+==================
+Reject missing field pattern
+:error
+==================
+(node field:)
+---
+
+==================
+Reject wildcard as field name
+:error
+==================
+(node _: (_))
+---
+
+==================
+Reject wildcard as top-level field name
+:error
+==================
+_: (_)
+---
+
+==================
+Reject wildcard as group field name
+:error
+==================
+((node) _: (_))
+---
+
+==================
+Reject wildcard as alternant field name
+:error
+==================
+[_: (_)]
+---
+
+==================
+Reject wildcard as chained field name
+:error
+==================
+field: _: (_)
+---
+
+==================
+Accept unknown nodes and fields without semantic validation
+==================
+(unknown field: (other) !absent)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (identifier))))
+      (negated_field name: (identifier)))))
+
+==================
+Accept chained field constraints without semantic validation
+==================
+(node first: second: (child))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (field_constraint
+        name: (identifier)
+        pattern: (field_constraint
+          name: (identifier)
+          pattern: (pattern body: (node_pattern node: (identifier))))))))
+
+==================
+Accept a call-only group in a top-level field without semantic validation
+==================
+field: ((#p?))
+---
+
+(query
+  (field_constraint
+    name: (identifier)
+    pattern: (pattern body: (group (predicate name: (identifier))))))
+
+==================
+Chained fields retain separators and postfix ranges
+:cst
+==================
+left: right: (_)+ @x
+---
+
+0:0  - 0:20   query
+0:0  - 0:20     field_constraint
+0:0  - 0:4        name: identifier `left`
+0:4  - 0:5        ":"
+0:6  - 0:20       pattern: field_constraint
+0:6  - 0:11         name: identifier `right`
+0:11 - 0:12         ":"
+0:13 - 0:20         pattern: pattern
+0:13 - 0:16           body: node_pattern
+0:13 - 0:14             "("
+0:14 - 0:15             node: wildcard `_`
+0:15 - 0:16             ")"
+0:16 - 0:17           quantifier: quantifier `+`
+0:18 - 0:20           capture: capture
+0:18 - 0:19             "@"
+0:19 - 0:20             name: identifier `x`

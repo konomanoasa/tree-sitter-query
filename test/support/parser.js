@@ -4,6 +4,11 @@ import { join } from "node:path";
 import { after, before } from "node:test";
 import { createTreeSitter, root } from "../../scripts/tree-sitter.js";
 
+import { parseCst, parseTrees } from "./cst.js";
+
+const buildTimeoutMs = 60_000;
+const parseTimeoutMs = 30_000;
+
 let runner;
 let library;
 
@@ -14,7 +19,7 @@ before(() => {
     process.platform === "win32" ? "parser.dll" : "parser",
   );
   const result = runner.run(["build", "--output", library, root], {
-    timeout: 60000,
+    timeout: buildTimeoutMs,
   });
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -23,23 +28,6 @@ before(() => {
 after(() => {
   runner?.close();
 });
-
-function trees(stdout, path) {
-  const parsed = [];
-  let lines = [];
-  for (const line of stdout.split("\n")) {
-    if (
-      line.startsWith(path) &&
-      /^[ \t]+Parse:[ \t]/.test(line.slice(path.length))
-    ) {
-      parsed.push(lines.join("\n"));
-      lines = [];
-    } else if (!/^[ \t]*Edit:[ \t]/.test(line)) {
-      lines.push(line);
-    }
-  }
-  return parsed;
-}
 
 function applyEdits(source, edits) {
   let bytes = Buffer.from(source);
@@ -68,7 +56,6 @@ function applyEdits(source, edits) {
   return bytes;
 }
 
-// The CLI exit status misses hidden missing tokens; use the --cst marker.
 function parse(source, edits = []) {
   const directory = mkdtempSync(join(runner.directory, "input-"));
   try {
@@ -91,10 +78,10 @@ function parse(source, edits = []) {
     }
     const repeated = edits.length === 0;
     if (repeated) args.push(path);
-    const result = runner.run(args, { timeout: 30000 });
+    const result = runner.run(args, { timeout: parseTimeoutMs });
     assert.ifError(result.error);
     assert.ok(result.status === 0 || result.status === 1, result.stderr);
-    const parsed = trees(result.stdout, path);
+    const parsed = parseTrees(result.stdout, path);
     assert.equal(
       parsed.length,
       repeated ? 2 : 1,
@@ -104,22 +91,44 @@ function parse(source, edits = []) {
       assert.equal(parsed[1], parsed[0], "a repeated fresh parse must match");
     }
     const cst = parsed[0];
-    const rootRange =
-      /^[0-9]+:[0-9]+ +- +([0-9]+):([0-9]+) +(•?)(query|ERROR)( |\n|$)/.exec(
-        cst,
-      );
-    assert.ok(rootRange, cst);
-    let row = 0;
-    for (const byte of bytes) if (byte === 10) row += 1;
-    assert.deepEqual(
-      rootRange.slice(1, 3).map(Number),
-      [row, bytes.length - bytes.lastIndexOf(10) - 1],
-      "root must reach the edited source end",
-    );
-    return { cst, hasError: rootRange[3] === "•" };
+    return parseCst(cst, bytes);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-export { applyEdits, parse };
+function assertIncrementalEqualsFresh(initial, edits, source, valid) {
+  const description = JSON.stringify({ initial, edits, source });
+  const fresh = parse(source);
+  const incremental = parse(initial, edits);
+  if (valid !== undefined) {
+    assert.equal(fresh.hasError, !valid, description);
+    assert.equal(incremental.hasError, !valid, description);
+  }
+  if (!fresh.hasError) {
+    assert.equal(incremental.hasError, false, description);
+    assert.equal(incremental.cst, fresh.cst, description);
+  }
+}
+
+function assertEditRoundTrip({ initial, edit, expected, valid }) {
+  const { byte, deleteBytes, insert } = edit;
+  const edited = applyEdits(initial, [edit]).toString();
+  assert.equal(
+    edited,
+    expected,
+    "edit fixture must produce the explicit expected input",
+  );
+  assertIncrementalEqualsFresh(initial, [edit], expected, valid);
+  const restore = {
+    byte,
+    deleteBytes: Buffer.byteLength(insert),
+    insert: Buffer.from(initial)
+      .subarray(byte, byte + deleteBytes)
+      .toString(),
+  };
+  assert.equal(applyEdits(edited, [restore]).toString(), initial);
+  assertIncrementalEqualsFresh(initial, [edit, restore], initial, true);
+}
+
+export { applyEdits, assertEditRoundTrip, assertIncrementalEqualsFresh, parse };

@@ -1,0 +1,364 @@
+==================
+Supertype with named and anonymous subtype
+==================
+(expression/call) (expression/"()")
+---
+
+(query
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (identifier))))
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (string (string_content))))))
+
+==================
+ERROR and MISSING are query targets, not recovery artifacts
+==================
+(ERROR) (MISSING) (MISSING identifier) (MISSING ";")
+---
+
+(query
+  (pattern body: (node_pattern node: (identifier)))
+  (pattern body: (node_pattern node: (missing_node)))
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (string (string_content))))))
+
+==================
+Bare underscore splits a field prefix but preserves negated field and supertype names
+==================
+(node _field: (_) !_) (_/node) (MISSING _/"token")
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (pattern body: (wildcard))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))
+    (negated_field name: (identifier))))
+  (pattern body: (node_pattern node: (supertype
+    supertype: (identifier) subtype: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (supertype
+    supertype: (identifier) subtype: (string (string_content)))))))
+
+==================
+Adjacent bare wildcards keep separate patterns while names retain leading underscores
+==================
+__ @second _field: (_x !_field) @_x (#_call? _arg @_x)
+---
+
+(query
+  (pattern body: (wildcard))
+  (pattern body: (wildcard) capture: (capture name: (identifier)))
+  (pattern body: (wildcard))
+  (field_constraint
+    name: (identifier)
+    pattern: (pattern
+      body: (node_pattern node: (identifier)
+        (negated_field name: (identifier)))
+      capture: (capture name: (identifier))))
+  (predicate
+    name: (identifier)
+    argument: (identifier)
+    argument: (capture name: (identifier))))
+
+==================
+Typed missing nodes leave subsequent field names in their constraints
+==================
+(MISSING node field: (_)) (MISSING _ MISSING: (_)) (MISSING node ; field follows
+  name ; separator follows
+  : (_))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (comment)
+    (field_constraint
+      name: (identifier)
+      (comment)
+      pattern: (pattern body: (node_pattern node: (wildcard)))))))
+
+==================
+Missing node types and subsequent child patterns retain distinct owners
+==================
+(MISSING _) (MISSING MISSING) (MISSING "token" "child") (MISSING _ field: (_))
+---
+
+(query
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern node: (missing_node type: (identifier))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (string (string_content)))
+    (pattern body: (string (string_content)))))
+  (pattern body: (node_pattern
+    node: (missing_node type: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard)))))))
+
+==================
+Named and unrestricted wildcards
+==================
+(_) _
+---
+
+(query
+  (pattern body: (node_pattern node: (wildcard)))
+  (pattern body: (wildcard)))
+
+==================
+Reject bare wildcard opening a group
+:error
+==================
+(_ @x)
+---
+
+==================
+Reject quantified bare wildcard opening a group
+:error
+==================
+(_+ _)
+---
+
+==================
+Reject child after untyped MISSING
+:error
+==================
+(MISSING (_))
+---
+
+==================
+Reject field after untyped MISSING
+:error
+==================
+(MISSING field: (_))
+---
+
+==================
+Reject wildcard field after untyped MISSING
+:error
+==================
+(MISSING _: (_))
+---
+
+==================
+Reject untyped MISSING as supertype
+:error
+==================
+(MISSING/node)
+---
+
+==================
+Reject space before supertype separator
+:error
+==================
+(node /subtype)
+---
+
+==================
+Reject space after supertype separator
+:error
+==================
+(node/ subtype)
+---
+
+==================
+Reject comment before missing node subtype
+:error
+==================
+(MISSING node/; comment
+subtype)
+---
+
+==================
+Accept unresolved supertype without semantic validation
+==================
+(unknown/subtype)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (supertype supertype: (identifier) subtype: (identifier)))))
+
+==================
+Accept unknown missing node type without semantic validation
+==================
+(MISSING unknown)
+---
+
+(query (pattern body: (node_pattern node: (missing_node type: (identifier)))))
+
+==================
+Accept unknown missing node supertype without semantic validation
+==================
+(MISSING unknown/subtype)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (missing_node
+        type: (supertype supertype: (identifier) subtype: (identifier))))))
+
+==================
+Adjacent bare wildcards with a capture
+==================
+__ @second
+---
+
+(query
+  (pattern body: (wildcard))
+  (pattern body: (wildcard) capture: (capture name: (identifier))))
+
+==================
+Adjacent bare wildcards and a field inside a node
+==================
+(node __ @second _field: (x))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (pattern body: (wildcard))
+      (pattern body: (wildcard) capture: (capture name: (identifier)))
+      (pattern body: (wildcard))
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (identifier)))))))
+
+==================
+Adjacent bare wildcards and a field inside a group
+==================
+((x) _field: (y) __)
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern body: (node_pattern node: (identifier)))
+      (pattern body: (wildcard))
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (identifier))))
+      (pattern body: (wildcard))
+      (pattern body: (wildcard)))))
+
+==================
+Adjacent bare wildcards and a field inside an alternation
+==================
+[__ _field: (x)]
+---
+
+(query
+  (pattern
+    body: (alternation
+      (pattern body: (wildcard))
+      (pattern body: (wildcard))
+      (pattern body: (wildcard))
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (node_pattern node: (identifier)))))))
+
+==================
+Bare wildcard ends a field before the adjacent field
+==================
+field: _inner: (x)
+---
+
+(query
+  (field_constraint name: (identifier) pattern: (pattern body: (wildcard)))
+  (field_constraint
+    name: (identifier)
+    pattern: (pattern body: (node_pattern node: (identifier)))))
+
+==================
+Adjacent wildcards and capture names keep separate ranges
+:cst
+==================
+__ @x
+---
+
+0:0 - 0:5   query
+0:0 - 0:1     pattern
+0:0 - 0:1       body: wildcard `_`
+0:1 - 0:5     pattern
+0:1 - 0:2       body: wildcard `_`
+0:3 - 0:5       capture: capture
+0:3 - 0:4         "@"
+0:4 - 0:5         name: identifier `x`
+
+==================
+Bare wildcard splits a field prefix without changing ranges
+:cst
+==================
+_field: (x)
+---
+
+0:0  - 0:11   query
+0:0  - 0:1      pattern
+0:0  - 0:1        body: wildcard `_`
+0:1  - 0:11     field_constraint
+0:1  - 0:6        name: identifier `field`
+0:6  - 0:7        ":"
+0:8  - 0:11       pattern: pattern
+0:8  - 0:11         body: node_pattern
+0:8  - 0:9            "("
+0:9  - 0:10           node: identifier `x`
+0:10 - 0:11           ")"
+
+==================
+Node negated field and capture names retain underscores
+:cst
+==================
+(_x !_field) @_cap
+---
+
+0:0  - 0:18   query
+0:0  - 0:18     pattern
+0:0  - 0:12       body: node_pattern
+0:0  - 0:1          "("
+0:1  - 0:3          node: identifier `_x`
+0:4  - 0:11         negated_field
+0:4  - 0:5            "!"
+0:5  - 0:11           name: identifier `_field`
+0:11 - 0:12         ")"
+0:13 - 0:18       capture: capture
+0:13 - 0:14         "@"
+0:14 - 0:18         name: identifier `_cap`
+
+==================
+Missing type and supertype names retain underscores
+:cst
+==================
+(MISSING _type) (_super/_sub)
+---
+
+0:0  - 0:29   query
+0:0  - 0:15     pattern
+0:0  - 0:15       body: node_pattern
+0:0  - 0:1          "("
+0:1  - 0:14         node: missing_node
+0:1  - 0:8            "MISSING"
+0:9  - 0:14           type: identifier `_type`
+0:14 - 0:15         ")"
+0:16 - 0:29     pattern
+0:16 - 0:29       body: node_pattern
+0:16 - 0:17         "("
+0:17 - 0:28         node: supertype
+0:17 - 0:23           supertype: identifier `_super`
+0:23 - 0:24           "/"
+0:24 - 0:28           subtype: identifier `_sub`
+0:28 - 0:29         ")"

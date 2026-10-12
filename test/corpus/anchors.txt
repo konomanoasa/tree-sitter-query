@@ -1,0 +1,452 @@
+==================
+Sibling group owns its anchor and postfix operators
+==================
+((comment)+ @doc . (function)?) @pair
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)
+        capture: (capture name: (identifier)))
+      (anchor)
+      (pattern
+        body: (node_pattern node: (identifier))
+        quantifier: (quantifier)))
+    capture: (capture name: (identifier))))
+
+==================
+Leading, sibling and trailing anchors belong to the parent pattern
+==================
+(array . (_) @first . (_) @last .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (pattern body: (node_pattern node: (wildcard)) capture: (capture name: (identifier)))
+    (anchor)
+    (pattern body: (node_pattern node: (wildcard)) capture: (capture name: (identifier)))
+    (anchor))))
+
+==================
+Node anchors constrain child patterns across calls and negated fields
+==================
+(node (#before?) !a . (#first?) child: (_) (#mid!) !b . (other) . (#last?))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (predicate name: (identifier))
+    (negated_field name: (identifier))
+    (anchor)
+    (predicate name: (identifier))
+    (field_constraint
+      name: (identifier)
+      pattern: (pattern body: (node_pattern node: (wildcard))))
+    (directive name: (identifier))
+    (negated_field name: (identifier))
+    (anchor)
+    (pattern body: (node_pattern node: (identifier)))
+    (anchor)
+    (predicate name: (identifier)))))
+
+==================
+Node and group anchors retain call ownership without child patterns
+==================
+(node . (#custom?)) ((#custom?) . (#custom!))
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (predicate name: (identifier))))
+  (pattern body: (group
+    (predicate name: (identifier))
+    (anchor)
+    (directive name: (identifier)))))
+
+==================
+Calls separate anchors without merging their source positions
+==================
+(node . (#first?) . (child) . (#last?) .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (anchor)
+    (predicate name: (identifier))
+    (anchor)
+    (pattern body: (node_pattern node: (identifier)))
+    (anchor)
+    (predicate name: (identifier))
+    (anchor))))
+
+==================
+Group anchors constrain siblings across calls without moving the calls
+==================
+((#before?) (left) (#between?) . (#after!) (right) (#last?))
+---
+
+(query
+  (pattern body: (group
+    (predicate name: (identifier))
+    (pattern body: (node_pattern node: (identifier)))
+    (predicate name: (identifier))
+    (anchor)
+    (directive name: (identifier))
+    (pattern body: (node_pattern node: (identifier)))
+    (predicate name: (identifier)))))
+
+==================
+Nested child patterns allow a trailing anchor across call-only containers
+==================
+(node [(#check?) field: ((child)?)] ((#other!)) .)
+---
+
+(query
+  (pattern body: (node_pattern
+    node: (identifier)
+    (pattern body: (alternation
+      (predicate name: (identifier))
+      (field_constraint
+        name: (identifier)
+        pattern: (pattern body: (group
+          (pattern
+            body: (node_pattern node: (identifier))
+            quantifier: (quantifier)))))))
+    (pattern body: (group
+      (directive name: (identifier))))
+    (anchor))))
+
+==================
+Reject anchor without child
+:error
+==================
+(node .)
+---
+
+==================
+Reject leading anchor with only a negated field
+:error
+==================
+(node . !absent)
+---
+
+==================
+Reject trailing anchor with only a negated field
+:error
+==================
+(node !absent .)
+---
+
+==================
+Reject trailing anchor with only a predicate
+:error
+==================
+(node (#check?) .)
+---
+
+==================
+Reject trailing anchor with only a directive
+:error
+==================
+(node (#set! key value) .)
+---
+
+==================
+Reject trailing anchor after an anchored call
+:error
+==================
+(node . (#check?) .)
+---
+
+==================
+Reject trailing anchor after an unrelated top-level pattern
+:error
+==================
+(other) (node (#check?) .)
+---
+
+==================
+Reject negated field after leading anchor
+:error
+==================
+(node . !absent (child))
+---
+
+==================
+Reject negated field after trailing anchor
+:error
+==================
+(node (child) . !absent)
+---
+
+==================
+Reject comment before negated field after anchor
+:error
+==================
+(node . ; comment
+ !absent (child))
+---
+
+==================
+Reject anchors separated only by metadata
+:error
+==================
+(node (child) . !absent (#check?) . (other))
+---
+
+==================
+Reject anchor without a parent pattern
+:error
+==================
+(node) .
+---
+
+==================
+Reject leading group anchor
+:error
+==================
+(. (node))
+---
+
+==================
+Reject trailing group anchor
+:error
+==================
+((node) .)
+---
+
+==================
+Reject leading group anchor before a call
+:error
+==================
+(. (#check?) (node))
+---
+
+==================
+Reject trailing group anchor after a call
+:error
+==================
+((node) (#check?) .)
+---
+
+==================
+Reject leading alternation anchor
+:error
+==================
+[. (node)]
+---
+
+==================
+Reject anchor between alternants
+:error
+==================
+[(node) . (other)]
+---
+
+==================
+Reject trailing alternation anchor
+:error
+==================
+[(node) .]
+---
+
+==================
+Reject consecutive anchors
+:error
+==================
+(node (_) . . (_))
+---
+
+==================
+Anchors with a predicate without children
+==================
+(node . (#check?))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (anchor)
+      (predicate name: (identifier)))))
+
+==================
+Anchors with a directive without children
+==================
+(node . (#set! key value))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (anchor)
+      (directive
+        name: (identifier)
+        argument: (identifier)
+        argument: (identifier)))))
+
+==================
+Anchors with a call before a negated field
+==================
+(node . (#check?) !absent)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (anchor)
+      (predicate name: (identifier))
+      (negated_field name: (identifier)))))
+
+==================
+Anchors with a negated field before a child
+==================
+(node !absent . (child))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (negated_field name: (identifier))
+      (anchor)
+      (pattern body: (node_pattern node: (identifier))))))
+
+==================
+Anchors with a negated field before a trailing anchor
+==================
+(node (child) !absent .)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (pattern body: (node_pattern node: (identifier)))
+      (negated_field name: (identifier))
+      (anchor))))
+
+==================
+Anchors with calls between leading anchors
+==================
+(node . (#check?) . (child))
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (anchor)
+      (predicate name: (identifier))
+      (anchor)
+      (pattern body: (node_pattern node: (identifier))))))
+
+==================
+Anchors with calls between trailing anchors
+==================
+(node (child) . (#check?) .)
+---
+
+(query
+  (pattern
+    body: (node_pattern
+      node: (identifier)
+      (pattern body: (node_pattern node: (identifier)))
+      (anchor)
+      (predicate name: (identifier))
+      (anchor))))
+
+==================
+Anchors with a group call before a child
+==================
+((#check?) . (child))
+---
+
+(query
+  (pattern
+    body: (group
+      (predicate name: (identifier))
+      (anchor)
+      (pattern body: (node_pattern node: (identifier))))))
+
+==================
+Anchors with a group call after a child
+==================
+((child) . (#check?))
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern body: (node_pattern node: (identifier)))
+      (anchor)
+      (predicate name: (identifier)))))
+
+==================
+Anchors with a group containing only calls
+==================
+((#check?) . (#other?))
+---
+
+(query
+  (pattern
+    body: (group
+      (predicate name: (identifier))
+      (anchor)
+      (predicate name: (identifier)))))
+
+==================
+Anchors with group calls between anchors
+==================
+((child) . (#check?) . (other))
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern body: (node_pattern node: (identifier)))
+      (anchor)
+      (predicate name: (identifier))
+      (anchor)
+      (pattern body: (node_pattern node: (identifier))))))
+
+==================
+Public children retain fields delimiters and source order
+:cst
+==================
+(node . child: (_)+ @x !absent)
+---
+
+0:0  - 0:31   query
+0:0  - 0:31     pattern
+0:0  - 0:31       body: node_pattern
+0:0  - 0:1          "("
+0:1  - 0:5          node: identifier `node`
+0:6  - 0:7          anchor `.`
+0:8  - 0:22         field_constraint
+0:8  - 0:13           name: identifier `child`
+0:13 - 0:14           ":"
+0:15 - 0:22           pattern: pattern
+0:15 - 0:18             body: node_pattern
+0:15 - 0:16               "("
+0:16 - 0:17               node: wildcard `_`
+0:17 - 0:18               ")"
+0:18 - 0:19             quantifier: quantifier `+`
+0:20 - 0:22             capture: capture
+0:20 - 0:21               "@"
+0:21 - 0:22               name: identifier `x`
+0:23 - 0:30         negated_field
+0:23 - 0:24           "!"
+0:24 - 0:30           name: identifier `absent`
+0:30 - 0:31         ")"

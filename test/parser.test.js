@@ -3,129 +3,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { root } from "../scripts/tree-sitter.js";
-import { parse } from "./support/parser.js";
-
-test("query: alternation metadata requires at least one member", () => {
-  const nodeTypes = JSON.parse(
-    readFileSync(join(root, "src", "node-types.json"), "utf8"),
-  );
-  const alternation = nodeTypes.find((node) => node.type === "alternation");
-  assert.deepEqual(alternation.children, {
-    multiple: true,
-    required: true,
-    types: [
-      { type: "directive", named: true },
-      { type: "field_constraint", named: true },
-      { type: "pattern", named: true },
-      { type: "predicate", named: true },
-    ],
-  });
-});
-
-const invalidCases = [
-  ["unclosed node", "(node"],
-  ["unclosed string", '"unterminated'],
-  ["space after capture prefix", "(node) @ name"],
-  ["comment after capture prefix", "(node) @; comment\nname"],
-  ["newline in string", '"line\nbreak"'],
-  ["comment and NUL after a string newline", '"\n;x\0"'],
-  ["comment and NUL after a predicate string newline", '(#custom? "\n;x\0")'],
-  ["comment and NUL after a directive string newline", '(#custom! "\n;x\0")'],
-  ["comment and NUL after a subtype string newline", '(node/"\n;x\0")'],
-  ["empty group", "()"],
-  ["bare wildcard opening a group", "(_ @x)"],
-  ["quantified bare wildcard opening a group", "(_+ _)"],
-  ["empty alternation", "[]"],
-  ["anchor without child", "(node .)"],
-  ["leading anchor with only a negated field", "(node . !absent)"],
-  ["trailing anchor with only a negated field", "(node !absent .)"],
-  ["trailing anchor with only a predicate", "(node (#check?) .)"],
-  ["trailing anchor with only a directive", "(node (#set! key value) .)"],
-  ["trailing anchor after an anchored call", "(node . (#check?) .)"],
-  [
-    "trailing anchor after an unrelated top-level pattern",
-    "(other) (node (#check?) .)",
-  ],
-  ["negated field after leading anchor", "(node . !absent (child))"],
-  ["negated field after trailing anchor", "(node (child) . !absent)"],
-  [
-    "comment before negated field after anchor",
-    "(node . ; comment\n !absent (child))",
-  ],
-  [
-    "anchors separated only by metadata",
-    "(node (child) . !absent (#check?) . (other))",
-  ],
-  ["anchor without a parent pattern", "(node) ."],
-  ["leading group anchor", "(. (node))"],
-  ["trailing group anchor", "((node) .)"],
-  ["leading group anchor before a call", "(. (#check?) (node))"],
-  ["trailing group anchor after a call", "((node) (#check?) .)"],
-  ["leading alternation anchor", "[. (node)]"],
-  ["anchor between alternants", "[(node) . (other)]"],
-  ["trailing alternation anchor", "[(node) .]"],
-  ["consecutive anchors", "(node (_) . . (_))"],
-  ["call without marker", "(#name)"],
-  ["dot-prefixed predicate", "(.name? @x)"],
-  ["dot-prefixed directive", "(.name! key value)"],
-  ["space after call prefix", "(# name?)"],
-  ["space before call marker", "(#name ?)"],
-  ["capture on predicate", "(#name?) @capture"],
-  ["quantifier on directive", "(#name!)?"],
-  ["call as a field target", "(node field: (#check?))"],
-  ["call as a top-level field target", "field: (#check?)"],
-  ["missing capture name", "(node) @"],
-  ["missing negated field", "(node !)"],
-  ["missing field pattern", "(node field:)"],
-  ["wildcard as field name", "(node _: (_))"],
-  ["wildcard as top-level field name", "_: (_)"],
-  ["wildcard as group field name", "((node) _: (_))"],
-  ["wildcard as alternant field name", "[_: (_)]"],
-  ["wildcard as chained field name", "field: _: (_)"],
-  ["child after untyped MISSING", "(MISSING (_))"],
-  ["field after untyped MISSING", "(MISSING field: (_))"],
-  ["wildcard field after untyped MISSING", "(MISSING _: (_))"],
-  ["untyped MISSING as supertype", "(MISSING/node)"],
-  ["space before supertype separator", "(node /subtype)"],
-  ["space after supertype separator", "(node/ subtype)"],
-  ["comment before missing node subtype", "(MISSING node/; comment\nsubtype)"],
-  ["NUL between patterns", "(node)\0(other)"],
-];
-
-for (const [name, source] of invalidCases) {
-  test(`query: rejects ${name}`, () => {
-    const result = parse(source);
-    assert.equal(result.hasError, true, result.cst);
-  });
-}
+import { assertEditRoundTrip, parse } from "./support/parser.js";
 
 test("query: completes recovery for long sequences of invalid trailing anchors", () => {
   for (const unit of ["(node .)\n", "((a) .)\n", "(a/b .)\n", "(node [.])\n"]) {
-    const result = parse(unit.repeat(6000));
+    const repetitionCount = 6_000;
+    const result = parse(unit.repeat(repetitionCount));
     assert.equal(result.hasError, true, unit);
   }
 });
-
-const consumerCases = [
-  ["unknown nodes and fields", "(unknown field: (other) !absent)"],
-  ["unresolved supertype", "(unknown/subtype)"],
-  [
-    "custom calls and unresolved captures",
-    "((node) (#eq?) (#custom! @undefined))",
-  ],
-  ["unknown missing node type", "(MISSING unknown)"],
-  ["unknown missing node supertype", "(MISSING unknown/subtype)"],
-  ["chained field constraints", "(node first: second: (child))"],
-  ["a call-only group in a top-level field", "field: ((#p?))"],
-  ["calls in a quantified top-level alternation", "[(#p?) (a)]+"],
-];
-
-for (const [name, source] of consumerCases) {
-  test(`query: leaves ${name} to consumers`, () => {
-    const result = parse(source);
-    assert.equal(result.hasError, false, result.cst);
-  });
-}
 
 test("query: trailing anchors require a matching child in the same node pattern", () => {
   for (const calls of [
@@ -183,44 +69,361 @@ test("query: anchors retain child patterns across calls, comments and field cons
   }
 });
 
-test("query: bare wildcards need no separator before another pattern", () => {
-  for (const source of [
-    "__ @second",
-    "_field: (x)",
-    "(node __ @second _field: (x))",
-    "((x) _field: (y) __)",
-    "[__ _field: (x)]",
-    "field: _inner: (x)",
-  ]) {
-    const result = parse(source);
-    assert.equal(result.hasError, false, `${source}\n${result.cst}`);
-  }
-});
-
-const callAnchorCases = [
-  ["a predicate without children", "(node . (#check?))"],
-  ["a directive without children", "(node . (#set! key value))"],
-  ["a call before a negated field", "(node . (#check?) !absent)"],
-  ["a negated field before a child", "(node !absent . (child))"],
-  ["a negated field before a trailing anchor", "(node (child) !absent .)"],
-  ["calls between leading anchors", "(node . (#check?) . (child))"],
-  ["calls between trailing anchors", "(node (child) . (#check?) .)"],
-  ["a group call before a child", "((#check?) . (child))"],
-  ["a group call after a child", "((child) . (#check?))"],
-  ["a group containing only calls", "((#check?) . (#other?))"],
-  ["group calls between anchors", "((child) . (#check?) . (other))"],
-];
-
-for (const [name, source] of callAnchorCases) {
-  test(`query: accepts anchors with ${name}`, () => {
-    const result = parse(source);
-    assert.equal(result.hasError, false, result.cst);
-  });
-}
-
 test("query: parses the shipped highlight query as query source", () => {
   const result = parse(
     readFileSync(join(root, "queries/highlights.scm"), "utf8"),
   );
   assert.equal(result.hasError, false, result.cst);
 });
+
+const cases = [
+  {
+    name: "newline before comment-like string content and NUL",
+    initial: '";x\0"',
+    edit: { byte: 1, deleteBytes: 0, insert: "\n" },
+    expected: '"\n;x\0"',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like predicate argument and NUL",
+    initial: '(#custom? ";x\0")',
+    edit: { byte: 11, deleteBytes: 0, insert: "\n" },
+    expected: '(#custom? "\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like directive argument and NUL",
+    initial: '(#custom! ";x\0")',
+    edit: { byte: 11, deleteBytes: 0, insert: "\n" },
+    expected: '(#custom! "\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "newline before comment-like subtype and NUL",
+    initial: '(node/";x\0")',
+    edit: { byte: 7, deleteBytes: 0, insert: "\n" },
+    expected: '(node/"\n;x\0")',
+    valid: false,
+  },
+  {
+    name: "escape before a string newline and comment-like content",
+    initial: '"\\\n;x\0"',
+    edit: { byte: 1, deleteBytes: 1, insert: "" },
+    expected: '"\n;x\0"',
+    valid: false,
+  },
+  {
+    name: "node delimiter",
+    initial: "(node)",
+    edit: {
+      byte: 5,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: "(node",
+    valid: false,
+  },
+  {
+    name: "node name",
+    initial: "(node)",
+    edit: {
+      byte: 1,
+      deleteBytes: 4,
+      insert: "_",
+    },
+    expected: "(_)",
+    valid: true,
+  },
+  {
+    name: "adjacent bare wildcards",
+    initial: "_ _ @second",
+    edit: {
+      byte: 1,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: "__ @second",
+    valid: true,
+  },
+  {
+    name: "bare wildcard beside a field",
+    initial: "_ field: (x)",
+    edit: {
+      byte: 1,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: "_field: (x)",
+    valid: true,
+  },
+  {
+    name: "wildcard inserted before a field name",
+    initial: "field: (x)",
+    edit: {
+      byte: 0,
+      deleteBytes: 0,
+      insert: "_",
+    },
+    expected: "_field: (x)",
+    valid: true,
+  },
+  {
+    name: "leading underscore in a node name",
+    initial: "(x)",
+    edit: {
+      byte: 1,
+      deleteBytes: 0,
+      insert: "_",
+    },
+    expected: "(_x)",
+    valid: true,
+  },
+  {
+    name: "wildcard cannot become a field name",
+    initial: "(node _ (_))",
+    edit: {
+      byte: 7,
+      deleteBytes: 0,
+      insert: ":",
+    },
+    expected: "(node _: (_))",
+    valid: false,
+  },
+  {
+    name: "top-level field chain",
+    initial: "field: (node) @x",
+    edit: {
+      byte: 7,
+      deleteBytes: 0,
+      insert: "inner: ",
+    },
+    expected: "field: inner: (node) @x",
+    valid: true,
+  },
+  {
+    name: "group field constraint",
+    initial: "((node) (child))",
+    edit: {
+      byte: 8,
+      deleteBytes: 0,
+      insert: "field: ",
+    },
+    expected: "((node) field: (child))",
+    valid: true,
+  },
+  {
+    name: "alternant field constraint",
+    initial: "[(node) (child)]",
+    edit: {
+      byte: 8,
+      deleteBytes: 0,
+      insert: "field: ",
+    },
+    expected: "[(node) field: (child)]",
+    valid: true,
+  },
+  {
+    name: "anchor before a call",
+    initial: "(node (#check?))",
+    edit: {
+      byte: 6,
+      deleteBytes: 0,
+      insert: ". ",
+    },
+    expected: "(node . (#check?))",
+    valid: true,
+  },
+  {
+    name: "call between anchors",
+    initial: "(node . (#check?) . (child))",
+    edit: {
+      byte: 8,
+      deleteBytes: 9,
+      insert: "",
+    },
+    expected: "(node .  . (child))",
+    valid: false,
+  },
+  {
+    name: "last matching child in a group before a trailing anchor",
+    initial: "(node ((#check?) (child)) .)",
+    edit: {
+      byte: 17,
+      deleteBytes: 7,
+      insert: "",
+    },
+    expected: "(node ((#check?) ) .)",
+    valid: false,
+  },
+  {
+    name: "last matching child in an alternation before a trailing anchor",
+    initial: "(node [(#check?) (child)] .)",
+    edit: {
+      byte: 17,
+      deleteBytes: 7,
+      insert: "",
+    },
+    expected: "(node [(#check?) ] .)",
+    valid: false,
+  },
+  {
+    name: "missing node type cannot become a field name",
+    initial: "(MISSING field (_))",
+    edit: {
+      byte: 14,
+      deleteBytes: 0,
+      insert: ":",
+    },
+    expected: "(MISSING field: (_))",
+    valid: false,
+  },
+  {
+    name: "wildcard becomes a supertype name",
+    initial: "(_)",
+    edit: {
+      byte: 2,
+      deleteBytes: 0,
+      insert: "/node",
+    },
+    expected: "(_/node)",
+    valid: true,
+  },
+  {
+    name: "missing marker cannot become a supertype name",
+    initial: "(MISSING)",
+    edit: {
+      byte: 8,
+      deleteBytes: 0,
+      insert: "/node",
+    },
+    expected: "(MISSING/node)",
+    valid: false,
+  },
+  {
+    name: "missing node supertype",
+    initial: "(MISSING type)",
+    edit: {
+      byte: 13,
+      deleteBytes: 0,
+      insert: "/subtype",
+    },
+    expected: "(MISSING type/subtype)",
+    valid: true,
+  },
+  {
+    name: "missing type before a child",
+    initial: "(MISSING node (_))",
+    edit: {
+      byte: 9,
+      deleteBytes: 5,
+      insert: "",
+    },
+    expected: "(MISSING (_))",
+    valid: false,
+  },
+  {
+    name: "carriage return inside a comment",
+    initial: ";a b\n(_)",
+    edit: {
+      byte: 2,
+      deleteBytes: 1,
+      insert: "\r",
+    },
+    expected: ";a\rb\n(_)",
+    valid: true,
+  },
+  {
+    name: "capture name",
+    initial: "(node) @capture",
+    edit: {
+      byte: 8,
+      deleteBytes: 7,
+      insert: "",
+    },
+    expected: "(node) @",
+    valid: false,
+  },
+  {
+    name: "alternation delimiter",
+    initial: "[(node)] @set",
+    edit: {
+      byte: 0,
+      deleteBytes: 1,
+      insert: "(",
+    },
+    expected: "((node)] @set",
+    valid: false,
+  },
+  {
+    name: "comment prefix",
+    initial: "; text\r\n(node)",
+    edit: {
+      byte: 0,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: " text\r\n(node)",
+    valid: false,
+  },
+  {
+    name: "anchored child",
+    initial: "(node . (_) !absent)",
+    edit: {
+      byte: 8,
+      deleteBytes: 3,
+      insert: "",
+    },
+    expected: "(node .  !absent)",
+    valid: false,
+  },
+  {
+    name: "anchored sibling",
+    initial: "((_) . (_) (#check?))",
+    edit: {
+      byte: 7,
+      deleteBytes: 3,
+      insert: "",
+    },
+    expected: "((_) .  (#check?))",
+    valid: true,
+  },
+  {
+    name: "escape boundary",
+    initial: '"a\\\\b"',
+    edit: {
+      byte: 2,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: '"a\\b"',
+    valid: true,
+  },
+  {
+    name: "string content",
+    initial: '((node) (#custom? "text"))',
+    edit: {
+      byte: 22,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: '((node) (#custom? "tex"))',
+    valid: true,
+  },
+  {
+    name: "call delimiter",
+    initial: '((node) (#custom? "text"))',
+    edit: {
+      byte: 24,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: '((node) (#custom? "text")',
+    valid: false,
+  },
+];
+
+for (const entry of cases) {
+  test(`query: edits and restores ${entry.name}`, () => {
+    assertEditRoundTrip(entry);
+  });
+}
