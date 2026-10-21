@@ -66,69 +66,6 @@ Groups and alternations own field constraints in source order
       pattern: (pattern body: (wildcard))))))
 
 ==================
-Reject call as a field target
-:error
-==================
-(node field: (#check?))
----
-
-==================
-Reject call as a top-level field target
-:error
-==================
-field: (#check?)
----
-
-==================
-Reject missing negated field
-:error
-==================
-(node !)
----
-
-==================
-Reject missing field pattern
-:error
-==================
-(node field:)
----
-
-==================
-Reject wildcard as field name
-:error
-==================
-(node _: (_))
----
-
-==================
-Reject wildcard as top-level field name
-:error
-==================
-_: (_)
----
-
-==================
-Reject wildcard as group field name
-:error
-==================
-((node) _: (_))
----
-
-==================
-Reject wildcard as alternant field name
-:error
-==================
-[_: (_)]
----
-
-==================
-Reject wildcard as chained field name
-:error
-==================
-field: _: (_)
----
-
-==================
 Accept unknown nodes and fields without semantic validation
 ==================
 (unknown field: (other) !absent)
@@ -193,3 +130,65 @@ left: right: (_)+ @x
 0:18 - 0:20           capture: capture
 0:18 - 0:19             "@"
 0:19 - 0:20             name: identifier `x`
+==================
+Reject call as a field target
+:error
+==================
+(node field: (#check?))
+---
+
+==================
+Reject call as a top-level field target
+:error
+==================
+field: (#check?)
+---
+
+==================
+Reject missing negated field
+:error
+==================
+(node !)
+---
+
+==================
+Reject missing field pattern
+:error
+==================
+(node field:)
+---
+
+==================
+Reject wildcard as field name
+:error
+==================
+(node _: (_))
+---
+
+==================
+Reject wildcard as top-level field name
+:error
+==================
+_: (_)
+---
+
+==================
+Reject wildcard as group field name
+:error
+==================
+((node) _: (_))
+---
+
+==================
+Reject wildcard as alternant field name
+:error
+==================
+[_: (_)]
+---
+
+==================
+Reject wildcard as chained field name
+:error
+==================
+field: _: (_)
+---

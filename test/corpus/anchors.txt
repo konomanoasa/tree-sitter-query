@@ -126,160 +126,6 @@ Nested child patterns allow a trailing anchor across call-only containers
     (anchor))))
 
 ==================
-Reject anchor without child
-:error
-==================
-(node .)
----
-
-==================
-Reject leading anchor with only a negated field
-:error
-==================
-(node . !absent)
----
-
-==================
-Reject trailing anchor with only a negated field
-:error
-==================
-(node !absent .)
----
-
-==================
-Reject trailing anchor with only a predicate
-:error
-==================
-(node (#check?) .)
----
-
-==================
-Reject trailing anchor with only a directive
-:error
-==================
-(node (#set! key value) .)
----
-
-==================
-Reject trailing anchor after an anchored call
-:error
-==================
-(node . (#check?) .)
----
-
-==================
-Reject trailing anchor after an unrelated top-level pattern
-:error
-==================
-(other) (node (#check?) .)
----
-
-==================
-Reject negated field after leading anchor
-:error
-==================
-(node . !absent (child))
----
-
-==================
-Reject negated field after trailing anchor
-:error
-==================
-(node (child) . !absent)
----
-
-==================
-Reject comment before negated field after anchor
-:error
-==================
-(node . ; comment
- !absent (child))
----
-
-==================
-Reject anchors separated only by metadata
-:error
-==================
-(node (child) . !absent (#check?) . (other))
----
-
-==================
-Reject anchor without a parent pattern
-:error
-==================
-(node) .
----
-
-==================
-Reject leading group anchor
-:error
-==================
-(. (node))
----
-
-==================
-Reject trailing group anchor
-:error
-==================
-((node) .)
----
-
-==================
-Reject leading group anchor before a call
-:error
-==================
-(. (#check?) (node))
----
-
-==================
-Reject trailing group anchor after a call
-:error
-==================
-((node) (#check?) .)
----
-
-==================
-Reject leading alternation anchor
-:error
-==================
-[. (node)]
----
-
-==================
-Reject anchor between alternants
-:error
-==================
-[(node) . (other)]
----
-
-==================
-Reject trailing alternation anchor
-:error
-==================
-[(node) .]
----
-
-==================
-Reject consecutive anchors
-:error
-==================
-(node (_) . . (_))
----
-
-==================
-Anchors with a predicate without children
-==================
-(node . (#check?))
----
-
-(query
-  (pattern
-    body: (node_pattern
-      node: (identifier)
-      (anchor)
-      (predicate name: (identifier)))))
-
-==================
 Anchors with a directive without children
 ==================
 (node . (#set! key value))
@@ -450,3 +296,143 @@ Public children retain fields delimiters and source order
 0:23 - 0:24           "!"
 0:24 - 0:30           name: identifier `absent`
 0:30 - 0:31         ")"
+==================
+Reject anchor without child
+:error
+==================
+(node .)
+---
+
+==================
+Reject leading anchor with only a negated field
+:error
+==================
+(node . !absent)
+---
+
+==================
+Reject trailing anchor with only a negated field
+:error
+==================
+(node !absent .)
+---
+
+==================
+Reject trailing anchor with only a predicate
+:error
+==================
+(node (#check?) .)
+---
+
+==================
+Reject trailing anchor with only a directive
+:error
+==================
+(node (#set! key value) .)
+---
+
+==================
+Reject trailing anchor after an anchored call
+:error
+==================
+(node . (#check?) .)
+---
+
+==================
+Reject trailing anchor after an unrelated top-level pattern
+:error
+==================
+(other) (node (#check?) .)
+---
+
+==================
+Reject negated field after leading anchor
+:error
+==================
+(node . !absent (child))
+---
+
+==================
+Reject negated field after trailing anchor
+:error
+==================
+(node (child) . !absent)
+---
+
+==================
+Reject comment before negated field after anchor
+:error
+==================
+(node . ; comment
+ !absent (child))
+---
+
+==================
+Reject anchors separated only by metadata
+:error
+==================
+(node (child) . !absent (#check?) . (other))
+---
+
+==================
+Reject anchor without a parent pattern
+:error
+==================
+(node) .
+---
+
+==================
+Reject leading group anchor
+:error
+==================
+(. (node))
+---
+
+==================
+Reject trailing group anchor
+:error
+==================
+((node) .)
+---
+
+==================
+Reject leading group anchor before a call
+:error
+==================
+(. (#check?) (node))
+---
+
+==================
+Reject trailing group anchor after a call
+:error
+==================
+((node) (#check?) .)
+---
+
+==================
+Reject leading alternation anchor
+:error
+==================
+[. (node)]
+---
+
+==================
+Reject anchor between alternants
+:error
+==================
+[(node) . (other)]
+---
+
+==================
+Reject trailing alternation anchor
+:error
+==================
+[(node) .]
+---
+
+==================
+Reject consecutive anchors
+:error
+==================
+(node (_) . . (_))
+---

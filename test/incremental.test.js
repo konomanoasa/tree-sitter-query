@@ -2,9 +2,107 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   applyEdits,
+  assertEditRoundTrip,
   assertIncrementalEqualsFresh,
   parse,
 } from "./support/parser.js";
+
+const cases = [
+  {
+    name: "UTF-8 string",
+    initial: '(#custom? "日\\"本")',
+    edit: {
+      byte: 11,
+      deleteBytes: 3,
+      insert: "語",
+    },
+    expected: '(#custom? "語\\"本")',
+    valid: true,
+  },
+  {
+    name: "BOM",
+    initial: "(node)\n",
+    edit: {
+      byte: 0,
+      deleteBytes: 0,
+      insert: "﻿",
+    },
+    expected: "﻿(node)\n",
+    valid: true,
+  },
+  {
+    name: "node name",
+    initial: "(node)",
+    edit: {
+      byte: 1,
+      deleteBytes: 4,
+      insert: "_",
+    },
+    expected: "(_)",
+    valid: true,
+  },
+  {
+    name: "top-level field chain",
+    initial: "field: (node) @x",
+    edit: {
+      byte: 7,
+      deleteBytes: 0,
+      insert: "inner: ",
+    },
+    expected: "field: inner: (node) @x",
+    valid: true,
+  },
+  {
+    name: "group field constraint",
+    initial: "((node) (child))",
+    edit: {
+      byte: 8,
+      deleteBytes: 0,
+      insert: "field: ",
+    },
+    expected: "((node) field: (child))",
+    valid: true,
+  },
+  {
+    name: "alternant field constraint",
+    initial: "[(node) (child)]",
+    edit: {
+      byte: 8,
+      deleteBytes: 0,
+      insert: "field: ",
+    },
+    expected: "[(node) field: (child)]",
+    valid: true,
+  },
+  {
+    name: "carriage return inside a comment",
+    initial: ";a b\n(_)",
+    edit: {
+      byte: 2,
+      deleteBytes: 1,
+      insert: "\r",
+    },
+    expected: ";a\rb\n(_)",
+    valid: true,
+  },
+  {
+    name: "string content",
+    initial: '((node) (#custom? "text"))',
+    edit: {
+      byte: 22,
+      deleteBytes: 1,
+      insert: "",
+    },
+    expected: '((node) (#custom? "tex"))',
+    valid: true,
+  },
+];
+
+for (const entry of cases) {
+  test(`query: edits and restores ${entry.name}`, () => {
+    assertEditRoundTrip(entry);
+  });
+}
 
 test("query: fixed-seed generated histories match fresh parses and restore valid source structure", () => {
   const inputs = [

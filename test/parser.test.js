@@ -124,17 +124,6 @@ const cases = [
     valid: false,
   },
   {
-    name: "node name",
-    initial: "(node)",
-    edit: {
-      byte: 1,
-      deleteBytes: 4,
-      insert: "_",
-    },
-    expected: "(_)",
-    valid: true,
-  },
-  {
     name: "adjacent bare wildcards",
     initial: "_ _ @second",
     edit: {
@@ -188,39 +177,6 @@ const cases = [
     },
     expected: "(node _: (_))",
     valid: false,
-  },
-  {
-    name: "top-level field chain",
-    initial: "field: (node) @x",
-    edit: {
-      byte: 7,
-      deleteBytes: 0,
-      insert: "inner: ",
-    },
-    expected: "field: inner: (node) @x",
-    valid: true,
-  },
-  {
-    name: "group field constraint",
-    initial: "((node) (child))",
-    edit: {
-      byte: 8,
-      deleteBytes: 0,
-      insert: "field: ",
-    },
-    expected: "((node) field: (child))",
-    valid: true,
-  },
-  {
-    name: "alternant field constraint",
-    initial: "[(node) (child)]",
-    edit: {
-      byte: 8,
-      deleteBytes: 0,
-      insert: "field: ",
-    },
-    expected: "[(node) field: (child)]",
-    valid: true,
   },
   {
     name: "anchor before a call",
@@ -322,17 +278,6 @@ const cases = [
     valid: false,
   },
   {
-    name: "carriage return inside a comment",
-    initial: ";a b\n(_)",
-    edit: {
-      byte: 2,
-      deleteBytes: 1,
-      insert: "\r",
-    },
-    expected: ";a\rb\n(_)",
-    valid: true,
-  },
-  {
     name: "capture name",
     initial: "(node) @capture",
     edit: {
@@ -396,17 +341,6 @@ const cases = [
       insert: "",
     },
     expected: '"a\\b"',
-    valid: true,
-  },
-  {
-    name: "string content",
-    initial: '((node) (#custom? "text"))',
-    edit: {
-      byte: 22,
-      deleteBytes: 1,
-      insert: "",
-    },
-    expected: '((node) (#custom? "tex"))',
     valid: true,
   },
   {

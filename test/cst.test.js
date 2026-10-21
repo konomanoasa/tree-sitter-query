@@ -3,9 +3,34 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { root } from "../scripts/tree-sitter.js";
-import { parseCorpus } from "./support/corpus.js";
 import { parseCst, parseTrees } from "./support/cst.js";
-import { assertEditRoundTrip, parse } from "./support/parser.js";
+import { parse } from "./support/parser.js";
+
+function parseCorpus(text) {
+  const sections = text.split("==================\n");
+  assert.equal(sections.shift(), "", "corpus must begin with a header");
+  assert.equal(sections.length % 2, 0, "corpus headers must be paired");
+  const cases = [];
+  for (let index = 0; index < sections.length; index += 2) {
+    const [name, ...attributes] = sections[index].trimEnd().split("\n");
+    assert.ok(name, "corpus case must have a name");
+    for (const attribute of attributes) {
+      assert.ok(
+        attribute === ":cst" || attribute === ":error",
+        `unsupported corpus attribute: ${attribute}`,
+      );
+    }
+    const parts = sections[index + 1].split("\n---\n");
+    assert.equal(parts.length, 2, `${name}: expected one output separator`);
+    const source = parts[0];
+    assert.ok(
+      !source.endsWith("\r"),
+      `${name}: a trailing CR would be stripped by the corpus reader`,
+    );
+    cases.push({ name, source });
+  }
+  return cases;
+}
 
 const corpusDirectory = join(root, "test/corpus");
 for (const file of readdirSync(corpusDirectory).sort()) {
@@ -93,34 +118,3 @@ test("query: root completeness uses UTF-8 bytes and retains hidden recovery mark
     assert.throws(() => parseCst(cst, '"日"'), { code: "ERR_ASSERTION" }, cst);
   }
 });
-
-const cases = [
-  {
-    name: "UTF-8 string",
-    initial: '(#custom? "日\\"本")',
-    edit: {
-      byte: 11,
-      deleteBytes: 3,
-      insert: "語",
-    },
-    expected: '(#custom? "語\\"本")',
-    valid: true,
-  },
-  {
-    name: "BOM",
-    initial: "(node)\n",
-    edit: {
-      byte: 0,
-      deleteBytes: 0,
-      insert: "﻿",
-    },
-    expected: "﻿(node)\n",
-    valid: true,
-  },
-];
-
-for (const entry of cases) {
-  test(`query: edits and restores ${entry.name}`, () => {
-    assertEditRoundTrip(entry);
-  });
-}

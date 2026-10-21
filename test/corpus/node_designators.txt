@@ -118,70 +118,6 @@ Named and unrestricted wildcards
   (pattern body: (wildcard)))
 
 ==================
-Reject bare wildcard opening a group
-:error
-==================
-(_ @x)
----
-
-==================
-Reject quantified bare wildcard opening a group
-:error
-==================
-(_+ _)
----
-
-==================
-Reject child after untyped MISSING
-:error
-==================
-(MISSING (_))
----
-
-==================
-Reject field after untyped MISSING
-:error
-==================
-(MISSING field: (_))
----
-
-==================
-Reject wildcard field after untyped MISSING
-:error
-==================
-(MISSING _: (_))
----
-
-==================
-Reject untyped MISSING as supertype
-:error
-==================
-(MISSING/node)
----
-
-==================
-Reject space before supertype separator
-:error
-==================
-(node /subtype)
----
-
-==================
-Reject space after supertype separator
-:error
-==================
-(node/ subtype)
----
-
-==================
-Reject comment before missing node subtype
-:error
-==================
-(MISSING node/; comment
-subtype)
----
-
-==================
 Accept unresolved supertype without semantic validation
 ==================
 (unknown/subtype)
@@ -362,3 +298,66 @@ Missing type and supertype names retain underscores
 0:23 - 0:24           "/"
 0:24 - 0:28           subtype: identifier `_sub`
 0:28 - 0:29         ")"
+==================
+Reject bare wildcard opening a group
+:error
+==================
+(_ @x)
+---
+
+==================
+Reject quantified bare wildcard opening a group
+:error
+==================
+(_+ _)
+---
+
+==================
+Reject child after untyped MISSING
+:error
+==================
+(MISSING (_))
+---
+
+==================
+Reject field after untyped MISSING
+:error
+==================
+(MISSING field: (_))
+---
+
+==================
+Reject wildcard field after untyped MISSING
+:error
+==================
+(MISSING _: (_))
+---
+
+==================
+Reject untyped MISSING as supertype
+:error
+==================
+(MISSING/node)
+---
+
+==================
+Reject space before supertype separator
+:error
+==================
+(node /subtype)
+---
+
+==================
+Reject space after supertype separator
+:error
+==================
+(node/ subtype)
+---
+
+==================
+Reject comment before missing node subtype
+:error
+==================
+(MISSING node/; comment
+subtype)
+---

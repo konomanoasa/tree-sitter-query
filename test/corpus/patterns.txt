@@ -48,6 +48,18 @@ Group calls may precede a bare wildcard sibling
     (pattern body: (wildcard) capture: (capture name: (identifier))))))
 
 ==================
+Accept calls in a quantified top-level alternation without semantic validation
+==================
+[(#p?) (a)]+
+---
+
+(query
+  (pattern
+    body: (alternation
+      (predicate name: (identifier))
+      (pattern body: (node_pattern node: (identifier))))
+    quantifier: (quantifier)))
+==================
 Reject unclosed node
 :error
 ==================
@@ -67,16 +79,3 @@ Reject empty alternation
 ==================
 []
 ---
-
-==================
-Accept calls in a quantified top-level alternation without semantic validation
-==================
-[(#p?) (a)]+
----
-
-(query
-  (pattern
-    body: (alternation
-      (predicate name: (identifier))
-      (pattern body: (node_pattern node: (identifier))))
-    quantifier: (quantifier)))

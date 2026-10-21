@@ -68,6 +68,37 @@ Alternation owns its alternants and calls in source order
     (predicate name: (identifier) argument: (capture name: (identifier))))))
 
 ==================
+Accept custom calls and unresolved captures without semantic validation
+==================
+((node) (#eq?) (#custom! @undefined))
+---
+
+(query
+  (pattern
+    body: (group
+      (pattern body: (node_pattern node: (identifier)))
+      (predicate name: (identifier))
+      (directive name: (identifier) argument: (capture name: (identifier))))))
+
+==================
+Call argument and capture names retain underscores
+:cst
+==================
+(#_call? _arg @_cap)
+---
+
+0:0  - 0:20   query
+0:0  - 0:20     predicate
+0:0  - 0:1        "("
+0:1  - 0:2        "#"
+0:2  - 0:7        name: identifier `_call`
+0:7  - 0:8        "?"
+0:9  - 0:13       argument: identifier `_arg`
+0:14 - 0:19       argument: capture
+0:14 - 0:15         "@"
+0:15 - 0:19         name: identifier `_cap`
+0:19 - 0:20       ")"
+==================
 Reject call without marker
 :error
 ==================
@@ -115,35 +146,3 @@ Reject quantifier on directive
 ==================
 (#name!)?
 ---
-
-==================
-Accept custom calls and unresolved captures without semantic validation
-==================
-((node) (#eq?) (#custom! @undefined))
----
-
-(query
-  (pattern
-    body: (group
-      (pattern body: (node_pattern node: (identifier)))
-      (predicate name: (identifier))
-      (directive name: (identifier) argument: (capture name: (identifier))))))
-
-==================
-Call argument and capture names retain underscores
-:cst
-==================
-(#_call? _arg @_cap)
----
-
-0:0  - 0:20   query
-0:0  - 0:20     predicate
-0:0  - 0:1        "("
-0:1  - 0:2        "#"
-0:2  - 0:7        name: identifier `_call`
-0:7  - 0:8        "?"
-0:9  - 0:13       argument: identifier `_arg`
-0:14 - 0:19       argument: capture
-0:14 - 0:15         "@"
-0:15 - 0:19         name: identifier `_cap`
-0:19 - 0:20       ")"

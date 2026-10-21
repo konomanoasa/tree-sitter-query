@@ -15,8 +15,6 @@ npm install @konomanoasa/tree-sitter-query
 
 ## Development
 
-Development uses Node.js 24.21.0 or later.
-
 ```sh
 npm install
 npm run build
@@ -31,7 +29,7 @@ npm test
 
 ## Used By
 
-[query-ts-mode](https://github.com/konomanoasa/query-ts-mode): Emacs major mode.
+[query-ts-mode](https://github.com/konomanoasa/query-ts-mode)
 
 ## License
 
