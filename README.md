@@ -27,10 +27,6 @@ npm test
 - [Tree-sitter query operators](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html)
 - [Tree-sitter query predicates and directives](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html)
 
-## Used By
-
-[query-ts-mode](https://github.com/konomanoasa/query-ts-mode)
-
 ## License
 
 [MIT](LICENSE)

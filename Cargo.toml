@@ -1,11 +1,11 @@
 [package]
 name = "konomanoasa-tree-sitter-query"
 version = "0.3.3"
-edition = "2024"
 description = "Tree-sitter grammar for Tree-sitter Query."
 readme = "README.md"
-repository = "https://github.com/konomanoasa/tree-sitter-query"
 license = "MIT"
+repository = "https://github.com/konomanoasa/tree-sitter-query"
+edition = "2024"
 build = "bindings/rust/build.rs"
 links = "tree-sitter-query"
 include = [
