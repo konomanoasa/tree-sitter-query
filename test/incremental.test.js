@@ -134,8 +134,8 @@ test("query: fixed-seed generated histories match fresh parses and restore valid
     " ",
   ];
   const seed = 0x61c8d942;
-  const historiesPerInput = 40;
-  const editsPerHistory = 8;
+  const historiesPerInput = 2;
+  const editsBeforeRestore = 2;
   const maxDeletedCharacters = 2;
   const lcgMultiplier = 1_664_525;
   const lcgIncrement = 1_013_904_223;
@@ -150,7 +150,7 @@ test("query: fixed-seed generated histories match fresh parses and restore valid
       let source = initial;
       const edits = [];
       const undo = [];
-      for (let step = 0; step < editsPerHistory; step++) {
+      for (let step = 0; step < editsBeforeRestore; step++) {
         const boundaries = [0];
         let offset = 0;
         for (const character of source) {

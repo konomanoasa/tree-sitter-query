@@ -56,6 +56,7 @@ function applyEdits(source, edits) {
   return bytes;
 }
 
+// The CLI exposes only the final CST, so edit histories replay short prefixes.
 function parse(source, edits = []) {
   const directory = mkdtempSync(join(runner.directory, "input-"));
   try {

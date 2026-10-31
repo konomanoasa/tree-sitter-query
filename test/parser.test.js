@@ -5,6 +5,62 @@ import { test } from "node:test";
 import { root } from "../scripts/tree-sitter.js";
 import { assertEditRoundTrip, parse } from "./support/parser.js";
 
+test("query: names use C locale characters in every identifier context", () => {
+  for (const [name, valid] of [
+    ["A0_z.x-", true],
+    ["0name", true],
+    ["-name", true],
+    ["é", false],
+    ["aé", false],
+    ["日", false],
+    ["١", false],
+    ["𐐀", false],
+    ["e\u0301", false],
+    ["😀", false],
+  ]) {
+    for (const source of [
+      `(${name})`,
+      `${name}: (_)`,
+      `(node !${name})`,
+      `(_) @${name}`,
+      `(#${name}?)`,
+      `(#${name}!)`,
+      `(#custom? ${name})`,
+      `(node/${name})`,
+      `(MISSING ${name})`,
+    ]) {
+      const result = parse(source);
+      assert.equal(result.hasError, !valid, `${source}\n${result.cst}`);
+    }
+  }
+});
+
+test("query: layout uses C locale whitespace outside strings and comments", () => {
+  for (const [whitespace, valid] of [
+    [" ", true],
+    ["\t", true],
+    ["\n", true],
+    ["\v", true],
+    ["\f", true],
+    ["\r", true],
+    ["\u0085", false],
+    ["\u00a0", false],
+    ["\u1680", false],
+    ["\u2000", false],
+    ["\u200a", false],
+    ["\u200b", false],
+    ["\u2028", false],
+    ["\u2029", false],
+    ["\u202f", false],
+    ["\u205f", false],
+    ["\u3000", false],
+  ]) {
+    const source = `(node)${whitespace}(other)`;
+    const result = parse(source);
+    assert.equal(result.hasError, !valid, JSON.stringify(source));
+  }
+});
+
 test("query: completes recovery for long sequences of invalid trailing anchors", () => {
   for (const unit of ["(node .)\n", "((a) .)\n", "(a/b .)\n", "(node [.])\n"]) {
     const repetitionCount = 6_000;
@@ -77,6 +133,13 @@ test("query: parses the shipped highlight query as query source", () => {
 });
 
 const cases = [
+  {
+    name: "ASCII capture name replaced by a non-ASCII name",
+    initial: "(node) @name",
+    edit: { byte: 8, deleteBytes: 4, insert: "é" },
+    expected: "(node) @é",
+    valid: false,
+  },
   {
     name: "newline before comment-like string content and NUL",
     initial: '";x\0"',
