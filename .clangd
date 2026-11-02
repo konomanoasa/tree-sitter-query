@@ -22,25 +22,8 @@ CompileFlags:
 
 ---
 If:
-  PathMatch:
-    - .*\.h
-    - test/[^/]*\.c
-CompileFlags:
-  Add:
-    - -Wno-unused-function
-
----
-If:
   PathMatch: bindings/node/.*\.cc
 CompileFlags:
   CompilationDatabase: build/Release
   Add:
     - -std=c++17
-
----
-If:
-  PathMatch: bindings/python/.*\.c
-CompileFlags:
-  CompilationDatabase: None
-  Add:
-    - -I../../src

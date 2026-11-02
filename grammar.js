@@ -178,7 +178,6 @@ export default grammar({
       ),
     _string_line_break: () => token.immediate(/\n/),
     _unmatchable: () => token(seq("\\", /[^\s\S]/)),
-    // Keep NUL distinct from EOF in the generated lexer.
     string_content: () =>
       token.immediate(prec(1, repeat1(choice(/[^"\\\n]+/, "\0")))),
     escape_sequence: () =>
