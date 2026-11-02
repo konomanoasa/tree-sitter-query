@@ -25,6 +25,8 @@ test("query: names use C locale characters in every identifier context", () => {
       `(_) @${name}`,
       `(#${name}?)`,
       `(#${name}!)`,
+      `(.${name}?)`,
+      `(.${name}!)`,
       `(#custom? ${name})`,
       `(node/${name})`,
       `(MISSING ${name})`,
@@ -133,6 +135,20 @@ test("query: parses the shipped highlight query as query source", () => {
 });
 
 const cases = [
+  {
+    name: "predicate prefix changes from hash to dot",
+    initial: "(node . (#check?))",
+    edit: { byte: 9, deleteBytes: 1, insert: "." },
+    expected: "(node . (.check?))",
+    valid: true,
+  },
+  {
+    name: "directive prefix changes from hash to dot",
+    initial: "(#set! injection.language query)",
+    edit: { byte: 1, deleteBytes: 1, insert: "." },
+    expected: "(.set! injection.language query)",
+    valid: true,
+  },
   {
     name: "ASCII capture name replaced by a non-ASCII name",
     initial: "(node) @name",

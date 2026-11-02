@@ -43,7 +43,7 @@ const callOnlyGroupMembers = ($) =>
 const call = ($, marker) =>
   seq(
     "(",
-    "#",
+    choice("#", "."),
     field("name", alias($._immediate_identifier, $.identifier)),
     token.immediate(marker),
     repeat(field("argument", choice($.capture, $.string, $._name))),
@@ -151,7 +151,7 @@ export default grammar({
     _call_only_alternation: ($) => seq("[", repeat1($._call_only_member), "]"),
 
     quantifier: () => token(choice("+", "*", "?")),
-    anchor: () => ".",
+    anchor: () => /\./,
     wildcard: () => "_",
     capture: ($) =>
       seq("@", field("name", alias($._immediate_identifier, $.identifier))),

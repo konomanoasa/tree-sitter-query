@@ -19,10 +19,7 @@
   "/"
 ] @punctuation.delimiter
 
-[
-  "@"
-  "#"
-] @punctuation.special
+"@" @punctuation.special
 
 (wildcard) @character.special
 
@@ -45,10 +42,18 @@
   name: (identifier) @variable)
 
 (predicate
+  [
+    "#"
+    "."
+  ] @punctuation.special
   name: (identifier) @function.call
   "?" @punctuation.special)
 
 (directive
+  [
+    "#"
+    "."
+  ] @punctuation.special
   name: (identifier) @function.call
   "!" @punctuation.special)
 

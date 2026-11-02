@@ -46,7 +46,7 @@ Custom calls are accepted without validating argument semantics
 ==================
 Predicate inside a node pattern stays in source position
 ==================
-(node (#check? key) child: (_) (#act! @undefined))
+(node (.check? key) child: (_) (#act! @undefined))
 ---
 
 (query
@@ -59,7 +59,7 @@ Predicate inside a node pattern stays in source position
 ==================
 Alternation owns its alternants and calls in source order
 ==================
-[(comment) (#custom? @free)]
+[(comment) (.custom? @free)]
 ---
 
 (query
@@ -70,7 +70,7 @@ Alternation owns its alternants and calls in source order
 ==================
 Accept custom calls and unresolved captures without semantic validation
 ==================
-((node) (#eq?) (#custom! @undefined))
+((node) (#eq?) (.custom! @undefined))
 ---
 
 (query
@@ -106,17 +106,52 @@ Reject call without marker
 ---
 
 ==================
-Reject dot-prefixed predicate
-:error
+Dot-prefixed predicate owns its anonymous prefix and capture argument
+:cst
 ==================
 (.name? @x)
 ---
 
+0:0  - 0:11   query
+0:0  - 0:11     predicate
+0:0  - 0:1        "("
+0:1  - 0:2        "."
+0:2  - 0:6        name: identifier `name`
+0:6  - 0:7        "?"
+0:8  - 0:10       argument: capture
+0:8  - 0:9          "@"
+0:9  - 0:10         name: identifier `x`
+0:10 - 0:11       ")"
+
 ==================
-Reject dot-prefixed directive
-:error
+Dot-prefixed directive owns its anonymous prefix and literal arguments
+:cst
 ==================
 (.name! key value)
+---
+
+0:0  - 0:18   query
+0:0  - 0:18     directive
+0:0  - 0:1        "("
+0:1  - 0:2        "."
+0:2  - 0:6        name: identifier `name`
+0:6  - 0:7        "!"
+0:8  - 0:11       argument: identifier `key`
+0:12 - 0:17       argument: identifier `value`
+0:17 - 0:18       ")"
+
+==================
+Reject dot-prefixed call without marker
+:error
+==================
+(.name)
+---
+
+==================
+Reject space after dot call prefix
+:error
+==================
+(. name?)
 ---
 
 ==================

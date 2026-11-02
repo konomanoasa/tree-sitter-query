@@ -214,8 +214,8 @@ const finalCaptureCases = [
     ],
   },
   {
-    name: "anchor before a call without child patterns",
-    source: "(node . (#custom?))\n",
+    name: "anchor and dot call prefix retain distinct captures",
+    source: "(node . (.custom?))\n",
     captures: [
       [0, 1, "punctuation.bracket"],
       [1, 5, "type"],
@@ -348,7 +348,7 @@ const finalCaptureCases = [
   },
   {
     name: "directive markers and dotted arguments",
-    source: '(#set! injection.language "query") ; @ignored\n',
+    source: '(.set! injection.language "query") ; @ignored\n',
     captures: [
       [0, 1, "punctuation.bracket"],
       [1, 2, "punctuation.special"],

@@ -954,8 +954,8 @@
       }
     },
     "anchor": {
-      "type": "STRING",
-      "value": "."
+      "type": "PATTERN",
+      "value": "\\."
     },
     "wildcard": {
       "type": "STRING",
@@ -991,8 +991,17 @@
           "value": "("
         },
         {
-          "type": "STRING",
-          "value": "#"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "#"
+            },
+            {
+              "type": "STRING",
+              "value": "."
+            }
+          ]
         },
         {
           "type": "FIELD",
@@ -1052,8 +1061,17 @@
           "value": "("
         },
         {
-          "type": "STRING",
-          "value": "#"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "#"
+            },
+            {
+              "type": "STRING",
+              "value": "."
+            }
+          ]
         },
         {
           "type": "FIELD",
