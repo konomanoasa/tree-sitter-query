@@ -20,7 +20,7 @@ fn parses_valid_source() {
   while let Some((matched, index)) = captures.next() {
     let capture = matched.captures()[*index];
     if query.capture_names()[capture.index as usize] == "comment" {
-      comments.push(&source[capture.node.byte_range()]);
+      comments.push(capture.node.utf8_text(source.as_bytes()).unwrap());
     }
   }
   assert_eq!(comments, ["; hello"]);
